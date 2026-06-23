@@ -39,13 +39,13 @@ export function Dashboard({ data }: any) {
   
   const receberPendente = data.contasReceber.filter((c: any) => {
      const statusInfo = calculateStatusAtrasado(c.vencimento, c.status);
-     return (statusInfo === 'Pendente' || statusInfo === 'Atrasado') && filterByDate(c.vencimento);
+     return (['Em dia', 'Pgto do dia', 'Atrasado'].includes(statusInfo)) && filterByDate(c.vencimento);
   });
   const valorReceber = receberPendente.reduce((acc: number, v: any) => acc + v.valor, 0);
 
   const pagarPendente = data.contasPagar.filter((c: any) => {
      const statusInfo = calculateStatusAtrasado(c.vencimento, c.status);
-     return (statusInfo === 'Pendente' || statusInfo === 'Atrasado') && filterByDate(c.vencimento);
+     return (['Em dia', 'Pgto do dia', 'Atrasado'].includes(statusInfo)) && filterByDate(c.vencimento);
   });
   const valorPagar = pagarPendente.reduce((acc: number, v: any) => acc + v.valor, 0);
 
@@ -56,11 +56,11 @@ export function Dashboard({ data }: any) {
   
   const contasProximasRaw = data.contasPagar.filter((c: any) => {
        const statusInfo = calculateStatusAtrasado(c.vencimento, c.status);
-       return statusInfo === 'Pendente' || statusInfo === 'Atrasado';
+       return ['Em dia', 'Pgto do dia', 'Atrasado'].includes(statusInfo);
     }).map((c: any) => ({ ...c, tipo: 'Pagar' })).concat(
     data.contasReceber.filter((c: any) => {
        const statusInfo = calculateStatusAtrasado(c.vencimento, c.status);
-       return statusInfo === 'Pendente' || statusInfo === 'Atrasado';
+       return ['Em dia', 'Pgto do dia', 'Atrasado'].includes(statusInfo);
     }).map((c: any) => ({ ...c, tipo: 'Receber' }))
   );
 
@@ -84,6 +84,17 @@ export function Dashboard({ data }: any) {
      return '';
   };
 
+  const proximosAPagar7Dias = data.contasPagar.filter((c: any) => {
+    const statusInfo = calculateStatusAtrasado(c.vencimento, c.status);
+    if (!['Em dia', 'Pgto do dia'].includes(statusInfo)) return false;
+    const vd = new Date(c.vencimento);
+    const start = new Date(now);
+    start.setHours(0,0,0,0);
+    const end = new Date(next7Days);
+    end.setHours(23,59,59,999);
+    return vd >= start && vd <= end;
+  }).sort((a: any, b: any) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime()).slice(0, 5);
+
   // ----- CHARTS DATA -----
 
   // Sales by type
@@ -94,7 +105,7 @@ export function Dashboard({ data }: any) {
     });
     return Object.keys(counts).map(k => ({ name: k, value: counts[k] })).sort((a,b) => b.value - a.value);
   }, [vendasFiltradas]);
-  const COLORS = ['#0A2463', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+  const COLORS = ['#3B82F6', '#1D9E75', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
   // Monthly revenue for the last 6 months
   const monthlyData = useMemo(() => {
@@ -131,17 +142,17 @@ export function Dashboard({ data }: any) {
   return (
     <div className="space-y-6">
       {/* Filters Header */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between">
-         <div className="flex items-center gap-2 text-slate-700 font-bold">
-            <Filter size={18} className="text-[#0A2463]"/> 
-            <span className="uppercase tracking-widest text-[#0A2463]">Painel Geral</span>
+      <div className="bg-surface p-4 rounded-2xl shadow-sm border border-border flex flex-col md:flex-row gap-4 items-center justify-between">
+         <div className="flex items-center gap-2 text-primary font-bold">
+            <Filter size={18} className="text-primary"/> 
+            <span className="uppercase tracking-widest">Painel Geral</span>
          </div>
 
          <div className="flex flex-wrap items-center gap-3">
             <select 
               value={periodo} 
               onChange={(e) => setPeriodo(e.target.value)}
-              className="border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-[#D4A017] cursor-pointer bg-slate-50"
+              className="border border-border rounded-lg px-3 py-2 text-sm font-medium text-primary outline-none focus:border-[#1D9E75] cursor-pointer bg-surface-alt"
             >
               <option value="tudo">Todo o Histórico</option>
               <option value="hoje">Hoje</option>
@@ -150,19 +161,19 @@ export function Dashboard({ data }: any) {
               <option value="personalizado">Período Personalizado</option>
             </select>
             {periodo === 'personalizado' && (
-              <div className="flex items-center gap-2 bg-slate-50 p-1 border border-slate-300 rounded-lg">
+              <div className="flex items-center gap-2 bg-surface-alt p-1 border border-border rounded-lg">
                  <input 
                    type="date" 
                    value={dataInicio}
                    onChange={(e) => setDataInicio(e.target.value)}
-                   className="bg-transparent px-2 py-1 text-sm outline-none font-mono text-slate-600"
+                   className="bg-transparent px-2 py-1 text-sm outline-none font-mono text-muted"
                  />
-                 <span className="text-slate-400 font-bold">-</span>
+                 <span className="text-placeholder font-bold">-</span>
                  <input 
                    type="date" 
                    value={dataFim}
                    onChange={(e) => setDataFim(e.target.value)}
-                   className="bg-transparent px-2 py-1 text-sm outline-none font-mono text-slate-600"
+                   className="bg-transparent px-2 py-1 text-sm outline-none font-mono text-muted"
                  />
               </div>
             )}
@@ -171,87 +182,87 @@ export function Dashboard({ data }: any) {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-[#0A2463] hover:shadow-md transition-shadow">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-slate-500 mb-1">Total Vendido</h4>
-          <h3 className="text-2xl font-black text-slate-900 truncate">{formatCurrency(valorVendas)}</h3>
-          <p className="text-[10px] bg-blue-50 text-blue-600 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">{vendasFiltradas.length} Vendas</p>
+        <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-[#1D9E75] hover:shadow-md transition-shadow">
+          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
+          <h4 className="text-xs font-black uppercase text-muted mb-1">Total Vendido</h4>
+          <h3 className="text-2xl font-black text-primary truncate">{formatCurrency(valorVendas)}</h3>
+          <p className="text-[10px] bg-blue-900/30 text-blue-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">{vendasFiltradas.length} Vendas</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-emerald-500 hover:shadow-md transition-shadow">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-slate-500 mb-1">Lucro Estimado</h4>
+        <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-emerald-500 hover:shadow-md transition-shadow">
+          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
+          <h4 className="text-xs font-black uppercase text-muted mb-1">Lucro Estimado</h4>
           <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-black text-emerald-600 truncate">{formatCurrency(lucroBruto)}</h3>
+            <h3 className="text-2xl font-black text-emerald-400 truncate">{formatCurrency(lucroBruto)}</h3>
           </div>
-          <p className="text-[10px] bg-emerald-50 text-emerald-600 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">
+          <p className="text-[10px] bg-emerald-900/30 text-emerald-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">
              Margem: {valorVendas > 0 ? ((lucroBruto / valorVendas) * 100).toFixed(1) : '0'}%
           </p>
         </div>
         
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-amber-500 hover:shadow-md transition-shadow">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-slate-500 mb-1">A Receber</h4>
-          <h3 className="text-2xl font-black text-slate-800 truncate">{formatCurrency(valorReceber)}</h3>
-          <p className="text-[10px] bg-amber-50 text-amber-600 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">{receberPendente.length} Títulos Pendentes</p>
+        <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-amber-500 hover:shadow-md transition-shadow">
+          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
+          <h4 className="text-xs font-black uppercase text-muted mb-1">A Receber</h4>
+          <h3 className="text-2xl font-black text-primary truncate">{formatCurrency(valorReceber)}</h3>
+          <p className="text-[10px] bg-amber-900/30 text-amber-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">{receberPendente.length} Títulos Pendentes</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-red-500 hover:shadow-md transition-shadow">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-slate-500 mb-1">A Pagar</h4>
-          <h3 className="text-2xl font-black text-slate-800 truncate">{formatCurrency(valorPagar)}</h3>
-          <p className="text-[10px] bg-red-50 text-red-600 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">{pagarPendente.length} Títulos Pendentes</p>
+        <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-red-500 hover:shadow-md transition-shadow">
+          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
+          <h4 className="text-xs font-black uppercase text-muted mb-1">A Pagar</h4>
+          <h3 className="text-2xl font-black text-primary truncate">{formatCurrency(valorPagar)}</h3>
+          <p className="text-[10px] bg-red-900/30 text-red-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">{pagarPendente.length} Títulos Pendentes</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-sky-500 hover:shadow-md transition-shadow">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-slate-500 mb-1">Tks / Voos Emitidos</h4>
-          <h3 className="text-2xl font-black text-slate-900 truncate">{voosFiltrados.length}</h3>
-          <p className="text-[10px] bg-sky-50 text-sky-600 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">Passageiros no ar</p>
+        <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-sky-500 hover:shadow-md transition-shadow">
+          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
+          <h4 className="text-xs font-black uppercase text-muted mb-1">Tks / Voos Emitidos</h4>
+          <h3 className="text-2xl font-black text-primary truncate">{voosFiltrados.length}</h3>
+          <p className="text-[10px] bg-sky-900/30 text-sky-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">Passageiros no ar</p>
         </div>
       </div>
 
       {/* Próximos Voos (Top Priority) */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col mb-6">
-          <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center rounded-t-2xl">
-            <h4 className="font-black text-[#0A2463] uppercase tracking-wider flex items-center gap-2"><Plane size={18} className="text-sky-500"/> Próximos Voos / Embarques</h4>
-            <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-1 rounded-full font-black uppercase">Tempo Real / Curto Prazo</span>
+      <div className="bg-surface rounded-2xl shadow-sm border border-border flex flex-col mb-6">
+          <div className="p-4 bg-surface-alt border-b border-border flex justify-between items-center rounded-t-2xl">
+            <h4 className="font-black text-white uppercase tracking-wider flex items-center gap-2"><Plane size={18} className="text-sky-500"/> Próximos Voos / Embarques</h4>
+            <span className="bg-blue-900/50 text-blue-300 text-[10px] px-2 py-1 rounded-full font-black uppercase">Tempo Real / Curto Prazo</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400">
+              <thead className="bg-surface-alt text-[10px] uppercase font-bold text-placeholder">
                 <tr>
                   <th className="px-4 py-3">Passageiro / Voo</th>
                   <th className="px-4 py-3">Trecho</th>
                   <th className="px-4 py-3">Embarque / Check-in</th>
                 </tr>
               </thead>
-              <tbody className="text-sm border-t border-slate-200">
-                {proximosVoos.length === 0 ? <tr><td colSpan={3} className="p-4 text-center text-sm text-gray-500 font-medium bg-white">Nenhum voo programado nos próximos dias.</td></tr> : null}
+              <tbody className="text-sm border-t border-border">
+                {proximosVoos.length === 0 ? <tr><td colSpan={3} className="p-4 text-center text-sm text-muted font-medium bg-surface">Nenhum voo programado nos próximos dias.</td></tr> : null}
                 {proximosVoos.map((voo: any) => {
                   const is24h = new Date(voo.dataPartida).getTime() - now.getTime() < 24 * 60 * 60 * 1000;
                   const is48h = new Date(voo.dataPartida).getTime() - now.getTime() < 48 * 60 * 60 * 1000 && !is24h;
                   
                   return (
-                    <tr key={voo.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${is24h ? 'bg-red-50/50' : is48h ? 'bg-yellow-50/50' : 'bg-white'}`}>
+                    <tr key={voo.id} className={`border-b border-border hover:bg-surface-alt transition-colors ${is24h ? 'bg-red-900/30/50' : is48h ? 'bg-amber-900/30/50' : 'bg-surface'}`}>
                       <td className="px-4 py-3">
-                        <div className="font-black text-slate-900 uppercase text-xs truncate max-w-[300px]" title={voo.passageiros}>{voo.passageiros}</div>
-                        <div className="text-[10px] text-slate-500 font-mono mt-1 bg-slate-100 inline-block px-1 rounded">{voo.ciaAerea} {voo.numeroVoo} • LOC: {voo.localizador || 'S/ Loc'}</div>
+                        <div className="font-black text-primary uppercase text-xs truncate max-w-[300px]" title={voo.passageiros}>{voo.passageiros}</div>
+                        <div className="text-[10px] text-muted font-mono mt-1 bg-surface-alt inline-block px-1 rounded">{voo.ciaAerea} {voo.numeroVoo} • LOC: {voo.localizador || 'S/ Loc'}</div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center space-x-1 font-bold uppercase">
                           <span className="bg-slate-800 text-white px-1.5 py-0.5 rounded text-[10px] tracking-wider">{voo.origem?.toUpperCase()}</span>
-                          <span className="text-slate-300">→</span>
+                          <span className="text-secondary">→</span>
                           <span className="bg-slate-800 text-white px-1.5 py-0.5 rounded text-[10px] tracking-wider">{voo.destino?.toUpperCase()}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-between">
                           <div>
-                            <div className={`text-[11px] font-black uppercase ${is24h ? 'text-red-600' : 'text-[#0A2463]'}`}>
+                            <div className={`text-[11px] font-black uppercase ${is24h ? 'text-red-400' : 'text-white'}`}>
                               {new Date(voo.dataPartida).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' })}
                             </div>
-                            <div className={`text-[9px] uppercase mt-0.5 ${is24h ? 'text-red-400 font-bold' : is48h ? 'text-yellow-600 font-bold' : 'text-slate-400'}`}>
+                            <div className={`text-[9px] uppercase mt-0.5 ${is24h ? 'text-red-400 font-bold' : is48h ? 'text-yellow-600 font-bold' : 'text-placeholder'}`}>
                               Checkin: {voo.checkInDisponivel ? new Date(voo.checkInDisponivel).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' }) : 'N/D'}
                             </div>
                           </div>
@@ -270,7 +281,7 @@ export function Dashboard({ data }: any) {
                                  return (
                                    <button disabled
                                       title="Check-in não liberado ou Localizador ausente"
-                                      className="ml-2 px-2 py-1.5 bg-slate-100 text-slate-400 cursor-not-allowed uppercase tracking-widest text-[9px] font-bold rounded shadow-sm whitespace-nowrap">
+                                      className="ml-2 px-2 py-1.5 bg-surface-alt text-placeholder cursor-not-allowed uppercase tracking-widest text-[9px] font-bold rounded shadow-sm whitespace-nowrap">
                                      Pendente
                                    </button>
                                  );
@@ -291,51 +302,51 @@ export function Dashboard({ data }: any) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Graph 1: Receitas e Lucro (Ultimos 6 meses) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col min-h-[350px]">
+        <div className="lg:col-span-2 bg-surface rounded-2xl shadow-sm border border-border p-5 flex flex-col min-h-[350px]">
            <div className="flex items-center gap-2 mb-6">
-              <BarChartIcon size={18} className="text-[#0A2463]" />
-              <h4 className="font-black text-[#0A2463] uppercase tracking-wider text-sm">Faturamento e Margem (Últimos 6 Meses)</h4>
+              <BarChartIcon size={18} className="text-primary" />
+              <h4 className="font-black text-primary uppercase tracking-wider text-sm">Faturamento e Margem (Últimos 6 Meses)</h4>
            </div>
            <div className="flex-1 w-full h-full min-h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={monthlyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorVendas" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0A2463" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#0A2463" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                     </linearGradient>
                     <linearGradient id="colorLucro" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
                       <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-muted)' }} dy={10} />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fontSize: 12, fill: '#64748B' }}
+                    tick={{ fontSize: 12, fill: 'var(--color-muted)' }}
                     tickFormatter={(val) => `R$${(val/1000).toFixed(0)}k`}
                   />
                   <RechartsTooltip 
                      formatter={(value: number) => formatCurrency(value)}
-                     contentStyle={{ borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                     contentStyle={{ borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-primary)' }}
                   />
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold' }} />
-                  <Area type="monotone" dataKey="Vendas" stroke="#0A2463" strokeWidth={3} fillOpacity={1} fill="url(#colorVendas)" />
-                  <Area type="monotone" dataKey="Lucro" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorLucro)" />
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold', color: 'var(--color-primary)' }} />
+                  <Area type="monotone" dataKey="Vendas" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorVendas)" />
+                  <Area type="monotone" dataKey="Lucro" stroke="#1D9E75" strokeWidth={3} fillOpacity={1} fill="url(#colorLucro)" />
                 </AreaChart>
               </ResponsiveContainer>
            </div>
         </div>
 
         {/* Graph 2: Tipos de Venda */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col min-h-[350px]">
+        <div className="bg-surface rounded-2xl shadow-sm border border-border p-5 flex flex-col min-h-[350px]">
            <div className="flex items-center gap-2 mb-2">
-              <PieChartIcon size={18} className="text-[#0A2463]" />
-              <h4 className="font-black text-[#0A2463] uppercase tracking-wider text-sm">Distribuição de Vendas</h4>
+              <PieChartIcon size={18} className="text-primary" />
+              <h4 className="font-black text-primary uppercase tracking-wider text-sm">Distribuição de Vendas</h4>
            </div>
-           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 text-center">{getPeriodLabel()}</p>
+           <p className="text-[10px] text-placeholder font-bold uppercase tracking-wider mb-2 text-center">{getPeriodLabel()}</p>
            <div className="flex-1 w-full h-full min-h-[200px] flex items-center justify-center">
               {vendasPorTipo.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -354,45 +365,67 @@ export function Dashboard({ data }: any) {
                       ))}
                     </Pie>
                     <RechartsTooltip 
-                       contentStyle={{ borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px' }}
+                       contentStyle={{ borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-primary)', fontSize: '12px' }}
                     />
-                    <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '10px' }} />
+                    <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '10px', color: 'var(--color-primary)' }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="text-slate-400 text-sm font-medium">Nenhuma venda no período</div>
+                <div className="text-placeholder text-sm font-medium">Nenhuma venda no período</div>
               )}
            </div>
         </div>
+      </div>
+
+      {/* Próximos 7 Dias */}
+      <div className="bg-surface rounded-2xl shadow-sm border border-border flex flex-col p-5 mb-6">
+        <h4 className="font-black text-primary uppercase tracking-wider mb-4 border-b border-border pb-2">Títulos a Pagar — Próximos 7 Dias</h4>
+        {proximosAPagar7Dias.length === 0 ? (
+           <p className="text-sm text-muted font-medium">Nenhum título a pagar nos próximos 7 dias.</p>
+        ) : (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+             {proximosAPagar7Dias.map((c: any) => (
+                <div key={c.id} className="bg-surface-alt p-4 rounded-xl border border-border-hover border-l-4 border-l-amber-500 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-black text-amber-500 bg-amber-900/30 px-2 py-0.5 rounded tracking-widest mb-2 inline-block">
+                      {new Date(c.vencimento).toLocaleDateString('pt-BR')}
+                    </span>
+                    <h5 className="font-bold text-sm text-primary truncate" title={c.fornecedor}>{c.fornecedor}</h5>
+                  </div>
+                  <div className="mt-3 font-black text-primary pl-1">{formatCurrency(c.valor)}</div>
+                </div>
+             ))}
+           </div>
+        )}
       </div>
 
       {/* Utilities Tables */}
       <div className="grid grid-cols-1 gap-6">
         
         {/* Table 1: Alerta Financeiro */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col max-h-[500px]">
-          <div className="p-4 bg-slate-50 border-b border-slate-200 rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
-            <h4 className="font-black text-[#0A2463] uppercase tracking-wider flex items-center gap-2"><AlertCircle size={18} className="text-amber-500" /> Alerta Financeiro</h4>
+        <div className="bg-surface rounded-2xl shadow-sm border border-border flex flex-col max-h-[500px]">
+          <div className="p-4 bg-surface-alt border-b border-border rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
+            <h4 className="font-black text-white uppercase tracking-wider flex items-center gap-2"><AlertCircle size={18} className="text-amber-500" /> Alerta Financeiro</h4>
             <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-1 rounded-full font-black uppercase flex items-center gap-1">Pendente & Atraso</span>
           </div>
           <div className="p-4 flex-1 overflow-auto">
-            {contasProximas.length === 0 ? <p className="text-sm text-gray-500 font-medium">Nenhum título pendente ou em atraso.</p> : null}
+            {contasProximas.length === 0 ? <p className="text-sm text-muted font-medium">Nenhum título pendente ou em atraso.</p> : null}
             {contasProximas.map((c: any) => {
               const statusAtratado = calculateStatusAtrasado(c.vencimento, c.status);
               return (
-              <div key={c.id} className={`flex items-start justify-between border-l-4 pl-3 py-2 mb-3 bg-slate-50/50 rounded-r-lg border border-slate-100 border-l-transparent last:mb-0
-                 ${statusAtratado === 'Atrasado' ? '!border-l-red-500 bg-red-50/30' : c.tipo === 'Receber' ? '!border-l-blue-400' : '!border-l-[#D4A017]'}`}>
+              <div key={c.id} className={`flex items-start justify-between border-l-4 pl-3 py-2 mb-3 bg-surface-alt/50 rounded-r-lg border border-border border-l-transparent last:mb-0
+                 ${statusAtratado === 'Atrasado' ? '!border-l-red-500 bg-red-900/30/30' : c.tipo === 'Receber' ? '!border-l-blue-400' : '!border-l-[#1D9E75]'}`}>
                 <div>
-                  <div className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${statusAtratado === 'Atrasado' ? 'text-red-600' : c.tipo === 'Receber' ? 'text-blue-500' : 'text-amber-600'}`}>
+                  <div className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${statusAtratado === 'Atrasado' ? 'text-red-400' : c.tipo === 'Receber' ? 'text-blue-500' : 'text-amber-400'}`}>
                     <span>{c.tipo === 'Pagar' ? 'A Pagar (Fornecedor)' : 'A Receber (Cliente)'}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[8px] tracking-widest ${statusAtratado === 'Atrasado' ? 'bg-red-200' : 'bg-slate-200 text-slate-500'}`}>{statusAtratado === 'Atrasado' ? 'Atrasado' : new Date(c.vencimento).toLocaleDateString('pt-BR')}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[8px] tracking-widest ${statusAtratado === 'Atrasado' ? 'bg-red-200' : 'bg-surface-hover text-muted'}`}>{statusAtratado === 'Atrasado' ? 'Atrasado' : new Date(c.vencimento).toLocaleDateString('pt-BR')}</span>
                   </div>
-                  <div className="font-bold text-sm text-slate-800 truncate max-w-[300px] mt-1" title={c.cliente || c.fornecedor}>
+                  <div className="font-bold text-sm text-primary truncate max-w-[300px] mt-1" title={c.cliente || c.fornecedor}>
                     {c.cliente || c.fornecedor}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-black text-slate-900">{formatCurrency(c.valor)}</div>
+                  <div className="font-black text-primary">{formatCurrency(c.valor)}</div>
                 </div>
               </div>
             )})}

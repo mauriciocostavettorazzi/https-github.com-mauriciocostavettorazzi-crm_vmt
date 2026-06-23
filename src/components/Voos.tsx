@@ -101,34 +101,34 @@ export function Voos({ data, updateData }: any) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between mb-6">
-        <div className="flex space-x-2 bg-slate-100 p-1 rounded-lg">
+        <div className="flex space-x-2 bg-surface-alt p-1 rounded-lg">
           <button 
              onClick={() => setView('ativos')}
-             className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${view === 'ativos' ? 'bg-white text-[#0A2463] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+             className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${view === 'ativos' ? 'bg-surface text-white shadow-sm' : 'text-muted hover:text-primary'}`}
            >
              Próximos Voos
            </button>
            <button 
              onClick={() => setView('passados')}
-             className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${view === 'passados' ? 'bg-white text-[#0A2463] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+             className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${view === 'passados' ? 'bg-surface text-white shadow-sm' : 'text-muted hover:text-primary'}`}
            >
              Voos Passados
            </button>
         </div>
         <button 
           onClick={() => setIsFormOpen(!isFormOpen)}
-          className="bg-[#D4A017] text-[#0A2463] px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:brightness-110 uppercase flex items-center gap-2"
+          className="bg-[#1D9E75] text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:brightness-110 uppercase flex items-center gap-2"
         >
           <PlusCircle size={18} /> Novo Voo
         </button>
       </div>
 
       {isFormOpen && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border-b-4 border-[#0A2463] mb-6">
+        <div className="bg-surface p-6 rounded-2xl shadow-sm border-b-4 border-[#1D9E75] mb-6">
           <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="lg:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Venda Vinculada</label>
-              <select required className="w-full border border-gray-300 rounded-md p-2" 
+              <select required className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.vendaId} onChange={e => setFormData({...formData, vendaId: e.target.value})}>
                 <option value="">Selecione uma venda...</option>
                 {vendasPassagem.map((v: any) => (
@@ -138,18 +138,18 @@ export function Voos({ data, updateData }: any) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Passageiro(s)</label>
-              <input required type="text" className="w-full border border-gray-300 rounded-md p-2" 
+              <input required type="text" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.passageiros} onChange={e => setFormData({...formData, passageiros: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Localizador (PNR)</label>
-              <input required type="text" className="w-full border border-gray-300 rounded-md p-2 uppercase font-mono" maxLength={6}
+              <input required type="text" className="w-full border border-border-hover rounded-md p-2 uppercase font-mono" maxLength={6}
                 value={formData.localizador} onChange={e => setFormData({...formData, localizador: e.target.value.toUpperCase()})} />
             </div>
 
             <div className={`${formData.ciaAerea === 'Outras' ? 'lg:col-span-2' : ''}`}>
               <label className="block text-sm font-medium text-gray-700 mb-1">Cia Aérea</label>
-              <select required className="w-full border border-gray-300 rounded-md p-2" 
+              <select required className="w-full border border-border-hover rounded-md p-2" 
                  value={formData.ciaAerea === 'Azul' || formData.ciaAerea === 'GOL' || formData.ciaAerea === 'LATAM' || formData.ciaAerea === '' ? formData.ciaAerea : 'Outras'} 
                  onChange={e => setFormData({...formData, ciaAerea: e.target.value === 'Outras' ? 'Outra Cia' : e.target.value})}>
                  <option value="">Selecione...</option>
@@ -162,39 +162,39 @@ export function Voos({ data, updateData }: any) {
             {formData.ciaAerea !== 'Azul' && formData.ciaAerea !== 'GOL' && formData.ciaAerea !== 'LATAM' && formData.ciaAerea !== '' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Cia Aérea</label>
-                <input required type="text" className="w-full border border-gray-300 rounded-md p-2" 
+                <input required type="text" className="w-full border border-border-hover rounded-md p-2" 
                   value={formData.ciaAerea === 'Outra Cia' ? '' : formData.ciaAerea} onChange={e => setFormData({...formData, ciaAerea: e.target.value})} placeholder="Ex: TAP, Copa..."/>
               </div>
             )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Número Voo (Ex: G3 1234)</label>
-              <input required type="text" className="w-full border border-gray-300 rounded-md p-2 uppercase" 
+              <input required type="text" className="w-full border border-border-hover rounded-md p-2 uppercase" 
                 value={formData.numeroVoo} onChange={e => setFormData({...formData, numeroVoo: e.target.value.toUpperCase()})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Origem (IATA)</label>
-              <input required type="text" className="w-full border border-gray-300 rounded-md p-2 uppercase font-mono" maxLength={3}
+              <input required type="text" className="w-full border border-border-hover rounded-md p-2 uppercase font-mono" maxLength={3}
                 value={formData.origem} onChange={e => setFormData({...formData, origem: e.target.value.toUpperCase()})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Destino (IATA)</label>
-              <input required type="text" className="w-full border border-gray-300 rounded-md p-2 uppercase font-mono" maxLength={3}
+              <input required type="text" className="w-full border border-border-hover rounded-md p-2 uppercase font-mono" maxLength={3}
                 value={formData.destino} onChange={e => setFormData({...formData, destino: e.target.value.toUpperCase()})} />
             </div>
 
             <div className="lg:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Data e Hora de Partida</label>
-              <input required type="datetime-local" className="w-full border border-gray-300 rounded-md p-2" 
+              <input required type="datetime-local" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.dataPartida} onChange={e => setFormData({...formData, dataPartida: e.target.value})} />
             </div>
             <div className="lg:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Data e Hora de Chegada</label>
-              <input required type="datetime-local" className="w-full border border-gray-300 rounded-md p-2" 
+              <input required type="datetime-local" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.dataChegada} onChange={e => setFormData({...formData, dataChegada: e.target.value})} />
             </div>
             <div className="lg:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Voo (Regra Check-in)</label>
-              <select className="w-full border border-gray-300 rounded-md p-2" 
+              <select className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.tipoVoo} onChange={e => setFormData({...formData, tipoVoo: e.target.value})}>
                 <option value="Nacional">Nacional (48h antes)</option>
                 <option value="Internacional">Internacional (24h antes)</option>
@@ -203,7 +203,7 @@ export function Voos({ data, updateData }: any) {
 
             <div className="lg:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Emissão</label>
-              <select className="w-full border border-gray-300 rounded-md p-2" 
+              <select className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.formaEmissao} onChange={e => setFormData({...formData, formaEmissao: e.target.value})}>
                 <option value="Milhas">Milhas</option>
                 <option value="Tarifa Pagante">Tarifa Pagante</option>
@@ -212,7 +212,7 @@ export function Voos({ data, updateData }: any) {
             </div>
             <div className="lg:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor (Viagem)</label>
-              <select className="w-full border border-gray-300 rounded-md p-2" 
+              <select className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.fornecedor} onChange={e => setFormData({...formData, fornecedor: e.target.value})}>
                 <option value="">Selecione...</option>
                 {fornecedoresViagem.map((f: any) => (
@@ -221,20 +221,20 @@ export function Voos({ data, updateData }: any) {
               </select>
             </div>
             <div className="lg:col-span-4 flex justify-end mt-4">
-              <button type="submit" className="bg-[#0A2463] text-white px-6 py-2 rounded-md font-bold uppercase tracking-wider text-sm hover:bg-blue-900">Salvar Voo</button>
+              <button type="submit" className="bg-[#1D9E75] text-white px-6 py-2 rounded-md font-bold uppercase tracking-wider text-sm hover:bg-emerald-700">Salvar Voo</button>
             </div>
           </form>
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden flex flex-col">
-        <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-            <h4 className="font-black text-[#0A2463] uppercase tracking-wider">Passageiros e Embarques</h4>
+      <div className="bg-surface rounded-2xl shadow-md border border-border overflow-hidden flex flex-col">
+        <div className="p-4 bg-surface-alt border-b border-border flex flex-col md:flex-row justify-between items-center gap-4">
+            <h4 className="font-black text-white uppercase tracking-wider">Passageiros e Embarques</h4>
             <div className="relative w-full md:w-64">
               <input 
                 type="text" 
                 placeholder="Buscar voo, PNR, Cia..." 
-                className="w-full border border-gray-300 rounded-md pl-8 pr-3 py-1.5 text-sm"
+                className="w-full border border-border-hover rounded-md pl-8 pr-3 py-1.5 text-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -243,48 +243,48 @@ export function Voos({ data, updateData }: any) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400">
+            <thead className="bg-surface-alt text-[10px] uppercase font-bold text-placeholder">
               <tr>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('dataPartida')}>Data Partida {sortCol === 'dataPartida' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('numeroVoo')}>Voo {sortCol === 'numeroVoo' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('formaEmissao')}>Emissão & Forn. {sortCol === 'formaEmissao' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('origem')}>Trecho {(sortCol === 'origem' || sortCol === 'destino') && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('passageiros')}>PNR / Passag. {sortCol === 'passageiros' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('status')}>Status {sortCol === 'status' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('dataPartida')}>Data Partida {sortCol === 'dataPartida' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('numeroVoo')}>Voo {sortCol === 'numeroVoo' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('formaEmissao')}>Emissão & Forn. {sortCol === 'formaEmissao' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('origem')}>Trecho {(sortCol === 'origem' || sortCol === 'destino') && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('passageiros')}>PNR / Passag. {sortCol === 'passageiros' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('status')}>Status {sortCol === 'status' && (sortAsc ? '↑' : '↓')}</th>
                 <th className="px-4 py-3 text-center min-w-[120px]">Expt. Agenda</th>
               </tr>
             </thead>
-            <tbody className="text-sm border-t border-slate-200">
+            <tbody className="text-sm border-t border-border">
               {sortedVoosList.map((v: any) => (
-                <tr key={v.id} className="border-b border-slate-200 hover:bg-slate-50">
-                  <td className="px-4 py-3 text-sm font-bold text-slate-700">
+                <tr key={v.id} className="border-b border-border hover:bg-surface-alt">
+                  <td className="px-4 py-3 text-sm font-bold text-primary">
                     {new Date(v.dataPartida).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' })}
                   </td>
-                  <td className="px-4 py-3 text-slate-800">
+                  <td className="px-4 py-3 text-primary">
                     <span className="font-black uppercase">{v.ciaAerea}</span> <br/>
-                    <span className="text-xs text-slate-500 font-mono tracking-widest">{v.numeroVoo}</span>
+                    <span className="text-xs text-muted font-mono tracking-widest">{v.numeroVoo}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px] uppercase font-bold text-slate-600 block w-max mb-1">{v.formaEmissao || 'N/A'}</span>
-                    <span className="text-xs font-medium text-slate-500 uppercase">{v.fornecedor || '-'}</span>
+                    <span className="bg-surface-alt px-2 py-0.5 rounded text-[10px] uppercase font-bold text-muted block w-max mb-1">{v.formaEmissao || 'N/A'}</span>
+                    <span className="text-xs font-medium text-muted uppercase">{v.fornecedor || '-'}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center space-x-2 font-bold uppercase">
-                      <span className="bg-slate-200 px-1 rounded text-[11px] uppercase tracking-wider">{v.origem?.toUpperCase()}</span>
-                      <span className="text-slate-300">→</span>
-                      <span className="bg-slate-200 px-1 rounded text-[11px] uppercase tracking-wider">{v.destino?.toUpperCase()}</span>
+                      <span className="bg-surface-hover px-1 rounded text-[11px] uppercase tracking-wider">{v.origem?.toUpperCase()}</span>
+                      <span className="text-secondary">→</span>
+                      <span className="bg-surface-hover px-1 rounded text-[11px] uppercase tracking-wider">{v.destino?.toUpperCase()}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="font-black text-slate-900 bg-slate-100 px-1 rounded uppercase tracking-widest">{v.localizador}</span><br/>
-                    <span className="text-xs text-slate-500 uppercase font-bold">{v.passageiros}</span>
+                    <span className="font-black text-primary bg-surface-alt px-1 rounded uppercase tracking-widest">{v.localizador}</span><br/>
+                    <span className="text-xs text-muted uppercase font-bold">{v.passageiros}</span>
                   </td>
                   <td className="px-4 py-3">
                      <select 
                        className={`text-[10px] font-black uppercase tracking-wider leading-none rounded px-2 py-1 outline-none appearance-none cursor-pointer border
-                         ${v.status === 'Emitido' ? 'bg-blue-100 text-blue-800 border-blue-200' : 
-                           v.status === 'Voado' ? 'bg-slate-100 text-slate-800 border-slate-200' :
-                           v.status === 'Cancelado' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}
+                         ${v.status === 'Emitido' ? 'bg-blue-900/50 text-blue-300 border-blue-200' : 
+                           v.status === 'Voado' ? 'bg-surface-alt text-primary border-border' :
+                           v.status === 'Cancelado' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-yellow-100 text-amber-400 border-yellow-200'}`}
                        value={v.status}
                        onChange={(e) => handleStatus(v.id, e.target.value)}
                      >
@@ -330,7 +330,7 @@ export function Voos({ data, updateData }: any) {
                 </tr>
               ))}
               {data.voos.length === 0 && (
-                <tr><td colSpan={7} className="p-4 text-center text-gray-500 font-medium">Nenhum voo cadastrado.</td></tr>
+                <tr><td colSpan={7} className="p-4 text-center text-muted font-medium">Nenhum voo cadastrado.</td></tr>
               )}
             </tbody>
           </table>

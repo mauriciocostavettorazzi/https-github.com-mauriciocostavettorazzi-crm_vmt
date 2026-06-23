@@ -312,7 +312,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
       <div className="flex justify-end mb-6">
         <button 
           onClick={() => setIsFormOpen(!isFormOpen)}
-          className="bg-[#D4A017] text-[#0A2463] px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:brightness-110 uppercase flex items-center gap-2"
+          className="bg-[#1D9E75] text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:brightness-110 uppercase flex items-center gap-2"
         >
           <PlusCircle size={18} /> Nova Venda
         </button>
@@ -320,16 +320,16 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
       {isFormOpen && (
         <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 sticky top-0 z-10 rounded-t-2xl">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-border flex justify-between items-center bg-surface-alt sticky top-0 z-10 rounded-t-2xl">
               <div>
-                <h3 className="text-xl font-black text-[#0A2463] uppercase tracking-wider flex items-center gap-2">
-                  <PlusCircle size={20} className="text-[#D4A017]" />
+                <h3 className="text-xl font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <PlusCircle size={20} className="text-[#1D9E75]" />
                   {editingId ? 'Editar Venda / Embarque' : 'Nova Venda / Embarque'}
                 </h3>
               </div>
-              <button onClick={() => { setIsFormOpen(false); setEditingId(null); setFormData(initForm()); }} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                <X size={20} className="text-slate-500" />
+              <button onClick={() => { setIsFormOpen(false); setEditingId(null); setFormData(initForm()); }} className="p-2 hover:bg-surface-hover rounded-full transition-colors">
+                <X size={20} className="text-muted" />
               </button>
             </div>
             
@@ -337,7 +337,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
               <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                  <select required className="w-full border border-gray-300 rounded-md p-2" 
+                  <select required className="w-full border border-border-hover rounded-md p-2" 
                     value={formData.cliente} onChange={e => setFormData({...formData, cliente: e.target.value})}>
                     <option value="">Selecione um cliente...</option>
                 {data.clientes?.map((c: any) => (
@@ -347,12 +347,12 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Data da Venda</label>
-              <input required type="date" className="w-full border border-gray-300 rounded-md p-2" 
+              <input required type="date" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.dataVenda} onChange={e => setFormData({...formData, dataVenda: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Venda</label>
-              <select className="w-full border border-gray-300 rounded-md p-2" 
+              <select className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})}>
                 <option>Passagem Aérea</option>
                 <option>Hotel</option>
@@ -364,7 +364,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Valor Bruto (R$)</label>
-              <input required type="text" className="w-full border border-gray-300 rounded-md p-2" 
+              <input required type="text" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.valorBruto} 
                 onChange={e => {
                   const val = e.target.value;
@@ -376,11 +376,11 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                   setFormData({...formData, valorBruto: formatMonetaryInput(val), comissao: formatMonetaryInput(valorNum * 0.1)})
                 }} />
             </div>
-            <div className="md:col-span-2 xl:col-span-4 grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-slate-200 rounded-lg bg-slate-50">
+            <div className="md:col-span-2 xl:col-span-4 grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-border rounded-lg bg-surface-alt">
                <div className="md:col-span-4">
-                  <label className="flex items-center space-x-3 text-sm font-medium text-slate-700 cursor-pointer">
-                    <span className="font-bold text-[#0A2463]">Como calcular o lucro?</span>
-                    <select className="border border-gray-300 rounded-md p-1.5" value={formData.modoLucro} onChange={e => setFormData({...formData, modoLucro: e.target.value})}>
+                  <label className="flex items-center space-x-3 text-sm font-medium text-primary cursor-pointer">
+                    <span className="font-bold text-white">Como calcular o lucro?</span>
+                    <select className="border border-border-hover rounded-md p-1.5" value={formData.modoLucro} onChange={e => setFormData({...formData, modoLucro: e.target.value})}>
                       <option value="Comissao">Lançar Comissão R$</option>
                       <option value="Custo">Lançar Custo de Fornecedor</option>
                     </select>
@@ -390,7 +390,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                {formData.modoLucro === 'Comissao' ? (
                   <div className="md:col-span-2 lg:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Comissão de Lucro (R$)</label>
-                    <input required type="text" className="w-full border border-gray-300 rounded-md p-2" 
+                    <input required type="text" className="w-full border border-border-hover rounded-md p-2" 
                       value={formData.comissao} onChange={e => setFormData({...formData, comissao: e.target.value})} onBlur={e => setFormData({...formData, comissao: formatMonetaryInput(e.target.value)})} />
                   </div>
                ) : (
@@ -408,7 +408,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                            )}
                            <div>
                              <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor {idx + 1}</label>
-                             <select required className="w-full border border-gray-300 rounded-md p-2" 
+                             <select required className="w-full border border-border-hover rounded-md p-2" 
                                value={fc.fornecedor} onChange={e => {
                                  const list = [...formData.fornecedoresCustoList];
                                  list[idx].fornecedor = e.target.value;
@@ -422,7 +422,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                            </div>
                            <div>
                              <label className="block text-sm font-medium text-gray-700 mb-1">Custo (R$)</label>
-                             <input required type="text" className="w-full border border-gray-300 rounded-md p-2 pl-2" 
+                             <input required type="text" className="w-full border border-border-hover rounded-md p-2 pl-2" 
                                value={fc.valor} onChange={e => {
                                  const list = [...formData.fornecedoresCustoList];
                                  list[idx].valor = e.target.value;
@@ -435,20 +435,20 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                            </div>
                         </div>
                      ))}
-                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200">
+                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
                          <button type="button" onClick={() => {
                              setFormData({...formData, fornecedoresCustoList: [...formData.fornecedoresCustoList, { id: generateId(), fornecedor: '', valor: ''}]});
-                         }} className="text-[#D4A017] text-xs font-bold hover:brightness-110 flex items-center gap-1 uppercase tracking-wider">
+                         }} className="text-[#1D9E75] text-xs font-bold hover:brightness-110 flex items-center gap-1 uppercase tracking-wider">
                              <PlusCircle size={16}/> Adicionar custo
                          </button>
-                         <p className="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded">Lucro Calculado: {formatCurrency(parseMonetaryValue(formData.valorBruto || 0) - formData.fornecedoresCustoList.reduce((acc: number, curr: any) => acc + parseMonetaryValue(curr.valor), 0))}</p>
+                         <p className="text-sm font-bold text-emerald-400 bg-emerald-900/30 px-3 py-1 rounded">Lucro Calculado: {formatCurrency(parseMonetaryValue(formData.valorBruto || 0) - formData.fornecedoresCustoList.reduce((acc: number, curr: any) => acc + parseMonetaryValue(curr.valor), 0))}</p>
                      </div>
                   </div>
                )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Forma Pagamento</label>
-              <select className="w-full border border-gray-300 rounded-md p-2" 
+              <select className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.formaPagamento} onChange={e => setFormData({...formData, formaPagamento: e.target.value})}>
                 <option>Cartão</option>
                 <option>Boleto</option>
@@ -458,40 +458,40 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nº OS/Pedido</label>
-              <input type="text" className="w-full border border-gray-300 rounded-md p-2" 
+              <input type="text" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.numeroPedido} onChange={e => setFormData({...formData, numeroPedido: e.target.value})} />
             </div>
             <div className="md:col-span-2 xl:col-span-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-              <textarea className="w-full border border-gray-300 rounded-md p-2" 
+              <textarea className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.observacoes} onChange={e => setFormData({...formData, observacoes: e.target.value})} />
             </div>
 
             {/* Integrações Expandidas */}
-            <div className="md:col-span-2 xl:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200 mt-2">
+            <div className="md:col-span-2 xl:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4 bg-surface-alt p-4 rounded-lg border border-border mt-2">
               
               {/* Contas a Receber */}
               <div className="space-y-3">
-                 <h5 className="font-bold text-[#0A2463] uppercase tracking-wider text-sm border-b border-slate-200 pb-2">Contas a Receber (Automático)</h5>
+                 <h5 className="font-bold text-white uppercase tracking-wider text-sm border-b border-border pb-2">Contas a Receber (Automático)</h5>
                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento (Agendamento)</label>
-                    <input required type="date" className="w-full border border-gray-300 rounded-md p-2 text-sm" 
+                    <input required type="date" className="w-full border border-border-hover rounded-md p-2 text-sm" 
                       value={formData.receberVencimento} onChange={e => setFormData({...formData, receberVencimento: e.target.value})} />
                  </div>
               </div>
 
               {/* Contas a Pagar */}
               <div className="space-y-3">
-                 <div className="flex items-center space-x-2 border-b border-slate-200 pb-2">
-                    <input type="checkbox" className="rounded border-gray-300 text-[#0A2463] focus:ring-[#0A2463]" 
+                 <div className="flex items-center space-x-2 border-b border-border pb-2">
+                    <input type="checkbox" className="rounded border-border-hover text-white focus:ring-[#1F2220]" 
                        checked={formData.incluirPagar} onChange={(e) => setFormData({...formData, incluirPagar: e.target.checked})} />
-                    <h5 className="font-bold text-[#0A2463] uppercase tracking-wider text-sm">Contas a Pagar</h5>
+                    <h5 className="font-bold text-white uppercase tracking-wider text-sm">Contas a Pagar</h5>
                  </div>
                  
                  {formData.incluirPagar && (
                    <div className="space-y-4">
                      {formData.pagarList.map((pagarItem: any, idx: number) => (
-                       <div key={pagarItem.id} className="grid grid-cols-2 gap-3 relative bg-slate-50 p-3 rounded border border-slate-200">
+                       <div key={pagarItem.id} className="grid grid-cols-2 gap-3 relative bg-surface-alt p-3 rounded border border-border">
                           {formData.pagarList.length > 1 && (
                             <button type="button" onClick={() => {
                                 const list = [...formData.pagarList];
@@ -502,8 +502,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                             </button>
                           )}
                           <div className="col-span-2 md:col-span-1">
-                            <label className="block text-xs font-bold text-slate-500 uppercase">Fornecedor {idx + 1}</label>
-                            <select required className="w-full border border-gray-300 rounded text-sm p-1.5" 
+                            <label className="block text-xs font-bold text-muted uppercase">Fornecedor {idx + 1}</label>
+                            <select required className="w-full border border-border-hover rounded text-sm p-1.5" 
                                value={pagarItem.fornecedor} onChange={e => {
                                  const list = [...formData.pagarList];
                                  list[idx].fornecedor = e.target.value;
@@ -516,8 +516,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase">Valor R$ (Custo Líc.)</label>
-                             <input required type="text" className="w-full border border-gray-300 rounded text-sm p-1.5" 
+                            <label className="block text-xs font-bold text-muted uppercase">Valor R$ (Custo Líc.)</label>
+                             <input required type="text" className="w-full border border-border-hover rounded text-sm p-1.5" 
                                 value={pagarItem.valor} onChange={e => {
                                  const list = [...formData.pagarList];
                                  list[idx].valor = e.target.value;
@@ -529,8 +529,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                }} />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase">Vencimento</label>
-                             <input required type="date" className="w-full border border-gray-300 rounded text-sm p-1.5" 
+                            <label className="block text-xs font-bold text-muted uppercase">Vencimento</label>
+                             <input required type="date" className="w-full border border-border-hover rounded text-sm p-1.5" 
                                 value={pagarItem.vencimento} onChange={e => {
                                  const list = [...formData.pagarList];
                                  list[idx].vencimento = e.target.value;
@@ -541,7 +541,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                      ))}
                      <button type="button" onClick={() => {
                          setFormData({...formData, pagarList: [...formData.pagarList, { id: generateId(), fornecedor: '', valor: '', vencimento: addDays(new Date(), 15).toISOString().substring(0, 10)}]});
-                     }} className="text-[#D4A017] text-xs font-bold hover:brightness-110 flex items-center gap-1 uppercase tracking-wider">
+                     }} className="text-[#1D9E75] text-xs font-bold hover:brightness-110 flex items-center gap-1 uppercase tracking-wider">
                          <PlusCircle size={16}/> Adicionar outro fornecedor
                      </button>
                    </div>
@@ -550,27 +550,27 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
               {/* Voos Emissao */}
               {formData.tipo === 'Passagem Aérea' && (
-                <div className="col-span-1 md:col-span-2 space-y-3 mt-2 border-t border-slate-200 pt-4">
-                  <div className="flex items-center space-x-2 border-b border-slate-200 pb-2">
-                      <input type="checkbox" className="rounded border-gray-300 text-[#0A2463] focus:ring-[#0A2463]" 
+                <div className="col-span-1 md:col-span-2 space-y-3 mt-2 border-t border-border pt-4">
+                  <div className="flex items-center space-x-2 border-b border-border pb-2">
+                      <input type="checkbox" className="rounded border-border-hover text-white focus:ring-[#1F2220]" 
                         checked={formData.incluirVoo} onChange={(e) => setFormData({...formData, incluirVoo: e.target.checked})} />
-                      <h5 className="font-bold text-[#0A2463] uppercase tracking-wider text-sm">Emitir Voo / Detalhes de Embarque</h5>
+                      <h5 className="font-bold text-white uppercase tracking-wider text-sm">Emitir Voo / Detalhes de Embarque</h5>
                   </div>
                   
                   {formData.incluirVoo && (
                     <div className="space-y-4">
-                      <div className="flex space-x-4 border-b border-slate-200 pb-2">
-                         <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 cursor-pointer">
+                      <div className="flex space-x-4 border-b border-border pb-2">
+                         <label className="flex items-center space-x-2 text-sm font-medium text-primary cursor-pointer">
                            <input type="radio" value="Ida" checked={formData.tipoViagem === 'Ida'} 
                              onChange={() => setFormData({...formData, tipoViagem: 'Ida', voosList: [formData.voosList[0]]})} name="tipoViagem" />
                            <span>Somente Ida</span>
                          </label>
-                         <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 cursor-pointer">
+                         <label className="flex items-center space-x-2 text-sm font-medium text-primary cursor-pointer">
                            <input type="radio" value="Ida e Volta" checked={formData.tipoViagem === 'Ida e Volta'} 
                              onChange={() => setFormData({...formData, tipoViagem: 'Ida e Volta', voosList: [formData.voosList[0], formData.voosList[1] || {...initialVoo, id: generateId()}]})} name="tipoViagem" />
                            <span>Ida e Volta</span>
                          </label>
-                         <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 cursor-pointer">
+                         <label className="flex items-center space-x-2 text-sm font-medium text-primary cursor-pointer">
                            <input type="radio" value="Multi-destinos" checked={formData.tipoViagem === 'Multi-destinos'} 
                              onChange={() => setFormData({...formData, tipoViagem: 'Multi-destinos'})} name="tipoViagem" />
                            <span>Multi-destinos</span>
@@ -578,7 +578,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                       </div>
 
                       {formData.voosList.map((voo, idx) => (
-                        <div key={voo.id} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3 bg-white border border-slate-200 rounded-lg relative">
+                        <div key={voo.id} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3 bg-surface border border-border rounded-lg relative">
                             {formData.tipoViagem === 'Multi-destinos' && formData.voosList.length > 1 && (
                                 <button type="button" onClick={() => {
                                   const newVoos = [...formData.voosList];
@@ -589,13 +589,13 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                 </button>
                             )}
                             <div className="col-span-full">
-                               <h6 className="text-[11px] font-black uppercase text-[#0A2463] mb-1">
+                               <h6 className="text-[11px] font-black uppercase text-white mb-1">
                                   {formData.tipoViagem === 'Ida' ? 'Trecho Único' : (formData.tipoViagem === 'Ida e Volta' ? (idx === 0 ? 'Ida' : 'Volta') : `Trecho ${idx + 1}`)}
                                </h6>
                             </div>
                             <div className="col-span-2">
-                              <label className="block text-xs font-bold text-slate-500 uppercase">Passageiros</label>
-                              <input required type="text" className="w-full border border-gray-300 rounded text-sm p-1.5" 
+                              <label className="block text-xs font-bold text-muted uppercase">Passageiros</label>
+                              <input required type="text" className="w-full border border-border-hover rounded text-sm p-1.5" 
                                 value={voo.passageiros} onChange={e => {
                                   const newVoos = [...formData.voosList];
                                   newVoos[idx].passageiros = e.target.value;
@@ -603,8 +603,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                 }} placeholder="João Silva, Maria Silva..."/>
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-slate-500 uppercase">Localizador PNR</label>
-                              <input required type="text" className="w-full border border-gray-300 rounded text-sm p-1.5 font-mono uppercase" 
+                              <label className="block text-xs font-bold text-muted uppercase">Localizador PNR</label>
+                              <input required type="text" className="w-full border border-border-hover rounded text-sm p-1.5 font-mono uppercase" 
                                 value={voo.localizador} onChange={e => {
                                   const newVoos = [...formData.voosList];
                                   newVoos[idx].localizador = e.target.value;
@@ -612,8 +612,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                 }} />
                             </div>
                             <div className={`${voo.ciaAerea === 'Outras' ? 'col-span-2 sm:col-span-1' : ''}`}>
-                              <label className="block text-xs font-bold text-slate-500 uppercase">Cia Aérea</label>
-                              <select required className="w-full border border-gray-300 rounded text-sm p-1.5" 
+                              <label className="block text-xs font-bold text-muted uppercase">Cia Aérea</label>
+                              <select required className="w-full border border-border-hover rounded text-sm p-1.5" 
                                 value={voo.ciaAerea === 'Azul' || voo.ciaAerea === 'GOL' || voo.ciaAerea === 'LATAM' || voo.ciaAerea === '' ? voo.ciaAerea : 'Outras'} 
                                 onChange={e => {
                                   const newVoos = [...formData.voosList];
@@ -629,8 +629,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                             </div>
                             {voo.ciaAerea !== 'Azul' && voo.ciaAerea !== 'GOL' && voo.ciaAerea !== 'LATAM' && voo.ciaAerea !== '' && (
                               <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase">Nome da Cia Aérea</label>
-                                <input required type="text" className="w-full border border-gray-300 rounded text-sm p-1.5" 
+                                <label className="block text-xs font-bold text-muted uppercase">Nome da Cia Aérea</label>
+                                <input required type="text" className="w-full border border-border-hover rounded text-sm p-1.5" 
                                   value={voo.ciaAerea === 'Outra Cia' ? '' : voo.ciaAerea} onChange={e => {
                                     const newVoos = [...formData.voosList];
                                     newVoos[idx].ciaAerea = e.target.value;
@@ -639,8 +639,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                               </div>
                             )}
                             <div>
-                              <label className="block text-xs font-bold text-slate-500 uppercase">Nº do Voo</label>
-                              <input required type="text" className="w-full border border-gray-300 rounded text-sm p-1.5 font-mono" 
+                              <label className="block text-xs font-bold text-muted uppercase">Nº do Voo</label>
+                              <input required type="text" className="w-full border border-border-hover rounded text-sm p-1.5 font-mono" 
                                 value={voo.numeroVoo} onChange={e => {
                                     const newVoos = [...formData.voosList];
                                     newVoos[idx].numeroVoo = e.target.value;
@@ -648,8 +648,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                 }} />
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-slate-500 uppercase">Origem (IATA)</label>
-                              <input required type="text" maxLength={3} className="w-full border border-gray-300 rounded text-sm p-1.5 uppercase font-mono tracking-widest" 
+                              <label className="block text-xs font-bold text-muted uppercase">Origem (IATA)</label>
+                              <input required type="text" maxLength={3} className="w-full border border-border-hover rounded text-sm p-1.5 uppercase font-mono tracking-widest" 
                                 value={voo.origem} onChange={e => {
                                     const newVoos = [...formData.voosList];
                                     newVoos[idx].origem = e.target.value.toUpperCase();
@@ -657,8 +657,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                 }} />
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-slate-500 uppercase">Destino (IATA)</label>
-                              <input required type="text" maxLength={3} className="w-full border border-gray-300 rounded text-sm p-1.5 uppercase font-mono tracking-widest" 
+                              <label className="block text-xs font-bold text-muted uppercase">Destino (IATA)</label>
+                              <input required type="text" maxLength={3} className="w-full border border-border-hover rounded text-sm p-1.5 uppercase font-mono tracking-widest" 
                                 value={voo.destino} onChange={e => {
                                     const newVoos = [...formData.voosList];
                                     newVoos[idx].destino = e.target.value.toUpperCase();
@@ -666,8 +666,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                 }} />
                             </div>
                             <div className="col-span-1 sm:col-span-2">
-                               <label className="block text-xs font-bold text-slate-500 uppercase">Data/Hora Partida</label>
-                               <input required type="datetime-local" className="w-full border border-gray-300 rounded text-sm p-1.5" 
+                               <label className="block text-xs font-bold text-muted uppercase">Data/Hora Partida</label>
+                               <input required type="datetime-local" className="w-full border border-border-hover rounded text-sm p-1.5" 
                                  value={voo.dataPartida} onChange={e => {
                                      const newVoos = [...formData.voosList];
                                      newVoos[idx].dataPartida = e.target.value;
@@ -677,12 +677,12 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                         </div>
                       ))}
 
-                      <div className="flex flex-col gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                      <div className="flex flex-col gap-3 p-3 bg-surface-alt border border-border rounded-lg">
                         <div className="flex items-center justify-between">
-                            <h6 className="text-[11px] font-black uppercase text-[#0A2463]">Informações de Emissão</h6>
-                            <label className="flex items-center space-x-2 text-xs font-bold text-slate-600 cursor-pointer">
+                            <h6 className="text-[11px] font-black uppercase text-white">Informações de Emissão</h6>
+                            <label className="flex items-center space-x-2 text-xs font-bold text-muted cursor-pointer">
                               <span>Aplicar mesma emissão para todos os trechos?</span>
-                              <input type="checkbox" className="rounded border-gray-300 text-[#0A2463] focus:ring-[#0A2463]"
+                              <input type="checkbox" className="rounded border-border-hover text-white focus:ring-[#1F2220]"
                                 checked={formData.mesmasInformacoesEmissao}
                                 onChange={(e) => {
                                   const eq = e.target.checked;
@@ -701,8 +701,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                         {formData.mesmasInformacoesEmissao ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                               <label className="block text-xs font-bold text-slate-500 uppercase">Fornecedor / Forma Pag.</label>
-                               <select className="w-full border border-gray-300 rounded text-sm p-1.5 bg-white" 
+                               <label className="block text-xs font-bold text-muted uppercase">Fornecedor / Forma Pag.</label>
+                               <select className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface" 
                                  value={formData.voosList[0]?.fornecedor || ''} onChange={e => {
                                     const newVoos = [...formData.voosList];
                                     newVoos.forEach(v => v.fornecedor = e.target.value);
@@ -715,8 +715,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase">Formato Emissão</label>
-                                <select className="w-full border border-gray-300 rounded text-sm p-1.5 bg-white" 
+                                <label className="block text-xs font-bold text-muted uppercase">Formato Emissão</label>
+                                <select className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface" 
                                    value={formData.voosList[0]?.formaEmissao || 'Milhas'} onChange={e => {
                                       const newVoos = [...formData.voosList];
                                       newVoos.forEach(v => v.formaEmissao = e.target.value);
@@ -729,15 +729,15 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                             </div>
                           </div>
                         ) : (
-                          <div className="space-y-4 border-t border-slate-200 mt-2 pt-3">
+                          <div className="space-y-4 border-t border-border mt-2 pt-3">
                             {formData.voosList.map((voo, vIdx) => (
-                              <div key={"emi-" + voo.id} className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-3 border-b border-slate-200 last:border-0 last:pb-0">
+                              <div key={"emi-" + voo.id} className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-3 border-b border-border last:border-0 last:pb-0">
                                 <div className="col-span-full">
-                                  <h6 className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Trecho {vIdx + 1} ({voo.origem || '?'} - {voo.destino || '?'})</h6>
+                                  <h6 className="text-[10px] uppercase font-bold text-muted tracking-wider">Trecho {vIdx + 1} ({voo.origem || '?'} - {voo.destino || '?'})</h6>
                                 </div>
                                 <div>
-                                   <label className="block text-xs font-bold text-slate-500 uppercase">Fornecedor / Forma Pag.</label>
-                                   <select className="w-full border border-gray-300 rounded text-sm p-1.5 bg-white" 
+                                   <label className="block text-xs font-bold text-muted uppercase">Fornecedor / Forma Pag.</label>
+                                   <select className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface" 
                                      value={voo.fornecedor || ''} onChange={e => {
                                         const newVoos = [...formData.voosList];
                                         newVoos[vIdx].fornecedor = e.target.value;
@@ -750,8 +750,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                    </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase">Formato Emissão</label>
-                                    <select className="w-full border border-gray-300 rounded text-sm p-1.5 bg-white" 
+                                    <label className="block text-xs font-bold text-muted uppercase">Formato Emissão</label>
+                                    <select className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface" 
                                        value={voo.formaEmissao || 'Milhas'} onChange={e => {
                                           const newVoos = [...formData.voosList];
                                           newVoos[vIdx].formaEmissao = e.target.value;
@@ -772,7 +772,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                          <div className="flex justify-end mt-2">
                             <button type="button" onClick={() => {
                                setFormData({...formData, voosList: [...formData.voosList, {...initialVoo, id: generateId()}]});
-                            }} className="text-xs font-bold bg-[#0A2463] text-white px-3 py-1.5 rounded-md hover:bg-blue-800 flex items-center gap-1 uppercase tracking-widest">
+                            }} className="text-xs font-bold bg-[#1D9E75] text-white px-3 py-1.5 rounded-md hover:bg-blue-800 flex items-center gap-1 uppercase tracking-widest">
                                <PlusCircle size={14} /> Add Voo
                             </button>
                          </div>
@@ -784,7 +784,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
             </div>
 
             <div className="md:col-span-2 xl:col-span-4 flex justify-end mt-4">
-              <button type="submit" className="bg-[#0A2463] text-white px-6 py-2 rounded-md font-bold uppercase tracking-wider text-sm hover:bg-blue-900">
+              <button type="submit" className="bg-[#1D9E75] text-white px-6 py-2 rounded-md font-bold uppercase tracking-wider text-sm hover:bg-emerald-700">
                     Salvar Venda
                   </button>
                 </div>
@@ -794,54 +794,54 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden flex flex-col mb-6">
-        <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-            <h4 className="font-black text-[#0A2463] uppercase tracking-wider">Vendas em Andamento</h4>
+      <div className="bg-surface rounded-2xl shadow-md border border-border overflow-hidden flex flex-col mb-6">
+        <div className="p-4 bg-surface-alt border-b border-border flex justify-between items-center">
+            <h4 className="font-black text-white uppercase tracking-wider">Vendas em Andamento</h4>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400">
+            <thead className="bg-surface-alt text-[10px] uppercase font-bold text-placeholder">
               <tr>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('dataPartida')}>Partida {sortCol === 'dataPartida' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('cliente')}>Cliente {sortCol === 'cliente' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('tipo')}>Tipo {sortCol === 'tipo' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('valorBruto')}>Valor {sortCol === 'valorBruto' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('dataPartida')}>Partida {sortCol === 'dataPartida' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('cliente')}>Cliente {sortCol === 'cliente' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('tipo')}>Tipo {sortCol === 'tipo' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('valorBruto')}>Valor {sortCol === 'valorBruto' && (sortAsc ? '↑' : '↓')}</th>
                 <th className="px-4 py-3 text-center tooltip truncate">Progresso</th>
                 <th className="px-4 py-3 text-center truncate">Ações</th>
               </tr>
             </thead>
-            <tbody className="text-sm border-t border-slate-200">
+            <tbody className="text-sm border-t border-border">
               {vendasAtivas.map((v: any, i: number) => {
                  const voo = data.voos.find((vo: any) => vo.vendaId === v.id);
                  const dataPartida = voo?.dataPartida ? new Date(voo.dataPartida).toLocaleDateString('pt-BR') : '-';
                  return (
-                 <tr key={v.id} onClick={() => setSelectedOverviewVenda(v)} className="border-b border-slate-200 hover:bg-slate-50 cursor-pointer">
-                   <td className="px-4 py-3 text-slate-500 font-bold">{dataPartida}</td>
-                   <td className="px-4 py-3 text-slate-800 font-bold uppercase">{v.cliente}</td>
-                   <td className="px-4 py-3 font-medium text-slate-600">{v.tipo}</td>
-                   <td className="px-4 py-3 font-black text-slate-900">{formatCurrency(v.valorBruto)}</td>
+                 <tr key={v.id} onClick={() => setSelectedOverviewVenda(v)} className="border-b border-border hover:bg-surface-alt cursor-pointer">
+                   <td className="px-4 py-3 text-muted font-bold">{dataPartida}</td>
+                   <td className="px-4 py-3 text-primary font-bold uppercase">{v.cliente}</td>
+                   <td className="px-4 py-3 font-medium text-muted">{v.tipo}</td>
+                   <td className="px-4 py-3 font-black text-primary">{formatCurrency(v.valorBruto)}</td>
                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-center space-x-2">
                        <button 
                          onClick={() => toggleVendaStatus(v.id, 'statusP')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-colors tooltip ${v.statusP ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}
+                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-colors tooltip ${v.statusP ? 'bg-[#1D9E75] text-white' : 'bg-surface-alt text-muted border border-border hover:bg-surface-hover'}`}
                          title="P: Valor Pago (Fornecedor)"
                        >P</button>
                        <button 
                          onClick={() => toggleVendaStatus(v.id, 'statusR')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-colors tooltip ${v.statusR ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}
+                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-colors tooltip ${v.statusR ? 'bg-[#1D9E75] text-white' : 'bg-surface-alt text-muted border border-border hover:bg-surface-hover'}`}
                          title="R: Valor Recebido (Cliente)"
                        >R</button>
                        <button 
                          onClick={() => toggleVendaStatus(v.id, 'statusV')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-colors tooltip ${v.statusV ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}
+                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-colors tooltip ${v.statusV ? 'bg-[#1D9E75] text-white' : 'bg-surface-alt text-muted border border-border hover:bg-surface-hover'}`}
                          title="V: Voado / Concluído"
                        >V</button>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-center space-x-2">
-                       <button onClick={() => handleEdit(v)} className="bg-blue-50 text-blue-500 p-1.5 rounded-md hover:scale-105 tooltip" title="Editar Venda">
+                       <button onClick={() => handleEdit(v)} className="bg-blue-900/30 text-blue-500 p-1.5 rounded-md hover:scale-105 tooltip" title="Editar Venda">
                           <Edit size={16} />
                        </button>
                        {v.status !== 'Cancelado' && (
@@ -849,7 +849,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                            <XCircle size={16} />
                          </button>
                        )}
-                       <button onClick={() => handleDelete(v.id)} className="bg-red-50 text-red-500 p-1.5 rounded-md hover:scale-105 tooltip" title="Excluir Definitivamente">
+                       <button onClick={() => handleDelete(v.id)} className="bg-red-900/30 text-red-500 p-1.5 rounded-md hover:scale-105 tooltip" title="Excluir Definitivamente">
                          <Trash2 size={16} />
                        </button>
                     </div>
@@ -858,61 +858,61 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                  );
               })}
               {vendasAtivas.length === 0 && (
-                <tr><td colSpan={6} className="p-4 text-center text-gray-500 font-medium">Nenhuma venda em andamento.</td></tr>
+                <tr><td colSpan={6} className="p-4 text-center text-muted font-medium">Nenhuma venda em andamento.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden flex flex-col opacity-70 hover:opacity-100 transition-opacity">
-        <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-            <h4 className="font-black text-slate-500 uppercase tracking-wider">Vendas Anteriores (Concluídas)</h4>
+      <div className="bg-surface rounded-2xl shadow-md border border-border overflow-hidden flex flex-col opacity-70 hover:opacity-100 transition-opacity">
+        <div className="p-4 bg-surface-alt border-b border-border flex justify-between items-center">
+            <h4 className="font-black text-muted uppercase tracking-wider">Vendas Anteriores (Concluídas)</h4>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400">
+            <thead className="bg-surface-alt text-[10px] uppercase font-bold text-placeholder">
               <tr>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('dataPartida')}>Partida {sortCol === 'dataPartida' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('cliente')}>Cliente {sortCol === 'cliente' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('tipo')}>Tipo {sortCol === 'tipo' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 cursor-pointer hover:text-slate-600 truncate" onClick={() => toggleSort('valorBruto')}>Valor {sortCol === 'valorBruto' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('dataPartida')}>Partida {sortCol === 'dataPartida' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('cliente')}>Cliente {sortCol === 'cliente' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('tipo')}>Tipo {sortCol === 'tipo' && (sortAsc ? '↑' : '↓')}</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('valorBruto')}>Valor {sortCol === 'valorBruto' && (sortAsc ? '↑' : '↓')}</th>
                 <th className="px-4 py-3 text-center tooltip truncate">Progresso</th>
                 <th className="px-4 py-3 text-center truncate">Ações</th>
               </tr>
             </thead>
-            <tbody className="text-sm border-t border-slate-200">
+            <tbody className="text-sm border-t border-border">
               {vendasAnteriores.map((v: any, i: number) => {
                  const voo = data.voos.find((vo: any) => vo.vendaId === v.id);
                  const dataPartida = voo?.dataPartida ? new Date(voo.dataPartida).toLocaleDateString('pt-BR') : '-';
                  return (
-                <tr key={v.id} onClick={() => setSelectedOverviewVenda(v)} className="border-b border-slate-200 hover:bg-slate-50 cursor-pointer">
-                  <td className="px-4 py-3 text-slate-500 font-bold">{dataPartida}</td>
-                  <td className="px-4 py-3 text-slate-600 font-bold uppercase">{v.cliente}</td>
-                  <td className="px-4 py-3 font-medium text-slate-500">{v.tipo}</td>
-                  <td className="px-4 py-3 font-black text-slate-600">{formatCurrency(v.valorBruto)}</td>
+                <tr key={v.id} onClick={() => setSelectedOverviewVenda(v)} className="border-b border-border hover:bg-surface-alt cursor-pointer">
+                  <td className="px-4 py-3 text-muted font-bold">{dataPartida}</td>
+                  <td className="px-4 py-3 text-muted font-bold uppercase">{v.cliente}</td>
+                  <td className="px-4 py-3 font-medium text-muted">{v.tipo}</td>
+                  <td className="px-4 py-3 font-black text-muted">{formatCurrency(v.valorBruto)}</td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-center space-x-2 grayscale">
                        <button 
                          onClick={() => toggleVendaStatus(v.id, 'statusP')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm tooltip bg-green-500 text-white`}
+                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm tooltip bg-[#1D9E75] text-white`}
                          title="P: Valor Pago (Fornecedor)"
                        >P</button>
                        <button 
                          onClick={() => toggleVendaStatus(v.id, 'statusR')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm tooltip bg-green-500 text-white`}
+                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm tooltip bg-[#1D9E75] text-white`}
                          title="R: Valor Recebido (Cliente)"
                        >R</button>
                        <button 
                          onClick={() => toggleVendaStatus(v.id, 'statusV')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm tooltip bg-green-500 text-white`}
+                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm tooltip bg-[#1D9E75] text-white`}
                          title="V: Voado / Concluído"
                        >V</button>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-center space-x-2">
-                       <button onClick={() => handleEdit(v)} className="bg-blue-50 text-blue-500 p-1.5 rounded-md hover:scale-105 tooltip" title="Editar Venda">
+                       <button onClick={() => handleEdit(v)} className="bg-blue-900/30 text-blue-500 p-1.5 rounded-md hover:scale-105 tooltip" title="Editar Venda">
                           <Edit size={16} />
                        </button>
                        {v.status !== 'Cancelado' && (
@@ -920,7 +920,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                            <XCircle size={16} />
                          </button>
                        )}
-                       <button onClick={() => handleDelete(v.id)} className="bg-red-50 text-red-500 p-1.5 rounded-md hover:scale-105 tooltip" title="Excluir Definitivamente">
+                       <button onClick={() => handleDelete(v.id)} className="bg-red-900/30 text-red-500 p-1.5 rounded-md hover:scale-105 tooltip" title="Excluir Definitivamente">
                          <Trash2 size={16} />
                        </button>
                     </div>
@@ -929,7 +929,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                 );
               })}
               {vendasAnteriores.length === 0 && (
-                <tr><td colSpan={6} className="p-4 text-center text-gray-500 font-medium">Nenhuma venda concluída.</td></tr>
+                <tr><td colSpan={6} className="p-4 text-center text-muted font-medium">Nenhuma venda concluída.</td></tr>
               )}
             </tbody>
           </table>
@@ -946,13 +946,13 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
       {vendaToDelete && (
         <div className="fixed inset-0 bg-slate-900/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-200 text-center">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md p-6 border border-border text-center">
             <Trash2 size={48} className="text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Excluir Venda</h3>
-            <p className="text-sm text-slate-500 mb-6">Tem certeza de que deseja excluir permanentemente esta venda? Esta ação não pode ser desfeita.</p>
+            <h3 className="text-xl font-bold text-primary mb-2">Excluir Venda</h3>
+            <p className="text-sm text-muted mb-6">Tem certeza de que deseja excluir permanentemente esta venda? Esta ação não pode ser desfeita.</p>
             <div className="flex justify-center gap-4">
-              <button onClick={() => setVendaToDelete(null)} className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 font-bold hover:bg-slate-50">Cancelar</button>
-              <button onClick={confirmDelete} className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600">Excluir Permanentemente</button>
+              <button onClick={() => setVendaToDelete(null)} className="px-4 py-2 border border-border rounded-lg text-muted font-bold hover:bg-surface-alt">Cancelar</button>
+              <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700">Excluir Permanentemente</button>
             </div>
           </div>
         </div>
@@ -960,12 +960,12 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
       {vendaToCancel && (
         <div className="fixed inset-0 bg-slate-900/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-200 text-center">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md p-6 border border-border text-center">
             <XCircle size={48} className="text-orange-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Cancelar Venda</h3>
-            <p className="text-sm text-slate-500 mb-6">Tem certeza de que deseja cancelar esta venda? Suas contas a receber pendentes também serão canceladas.</p>
+            <h3 className="text-xl font-bold text-primary mb-2">Cancelar Venda</h3>
+            <p className="text-sm text-muted mb-6">Tem certeza de que deseja cancelar esta venda? Suas contas a receber pendentes também serão canceladas.</p>
             <div className="flex justify-center gap-4">
-              <button onClick={() => setVendaToCancel(null)} className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 font-bold hover:bg-slate-50">Voltar</button>
+              <button onClick={() => setVendaToCancel(null)} className="px-4 py-2 border border-border rounded-lg text-muted font-bold hover:bg-surface-alt">Voltar</button>
               <button onClick={confirmCancel} className="px-4 py-2 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600">Cancelar Venda</button>
             </div>
           </div>

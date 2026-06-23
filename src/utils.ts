@@ -99,9 +99,11 @@ export const generateCalendarLink = (voo: any, isCheckin: boolean = false) => {
 };
 
 export const calculateStatusAtrasado = (dateStr: string, status: string) => {
-  if (status !== 'Pendente') return status;
+  if (status !== 'Pendente' && status !== 'Em dia' && status !== 'Pgto do dia' && status !== 'Atrasado') return status;
   const isLate = isPast(parseISO(dateStr)) && !isToday(parseISO(dateStr));
-  return isLate ? 'Atrasado' : 'Pendente';
+  if (isLate) return 'Atrasado';
+  if (isToday(parseISO(dateStr))) return 'Pgto do dia';
+  return 'Em dia';
 };
 
 export const parseMonetaryValue = (value: string | number): number => {
