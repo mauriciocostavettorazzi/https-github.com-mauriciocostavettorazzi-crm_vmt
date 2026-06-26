@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatCurrency, calculateStatusAtrasado } from '../utils';
-import { CheckCircle, Search } from 'lucide-react';
+import { CheckCircle, Search, Trash2 } from 'lucide-react';
+import { toast } from '../toast';
 import { VendaOverviewModal } from './VendaOverviewModal';
 
 export function ContasReceber({ data, updateData }: any) {
@@ -9,6 +10,14 @@ export function ContasReceber({ data, updateData }: any) {
   const [selectedOverviewVenda, setSelectedOverviewVenda] = useState<any>(null);
   const [contaToReceive, setContaToReceive] = useState<any>(null);
   const [dateToReceive, setDateToReceive] = useState(new Date().toISOString().substring(0, 10));
+  const [contaToDelete, setContaToDelete] = useState<any>(null);
+
+  const confirmDelete = () => {
+    if (!contaToDelete) return;
+    updateData({ contasReceber: data.contasReceber.filter((c: any) => c.id !== contaToDelete.id) });
+    toast('Conta excluída.', 'info');
+    setContaToDelete(null);
+  };
 
   const confirmReceive = () => {
     if (!contaToReceive) return;
@@ -135,12 +144,17 @@ export function ContasReceber({ data, updateData }: any) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
-                     {c.status !== 'Recebido' && c.status !== 'Cancelado' && (
-                      <button onClick={() => setContaToReceive(c)} className="bg-emerald-900/30 text-emerald-400 hover:bg-green-100 flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded tooltip w-full" title="Marcar como recebido">
-                        <CheckCircle size={14} /> Baixar
+                    <div className="flex items-center justify-center gap-2">
+                      {c.status !== 'Recebido' && c.status !== 'Cancelado' && (
+                        <button onClick={() => setContaToReceive(c)} className="bg-emerald-900/30 text-emerald-400 hover:bg-green-100 flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded tooltip" title="Marcar como recebido">
+                          <CheckCircle size={14} /> Baixar
+                        </button>
+                      )}
+                      {c.status === 'Recebido' && <span className="text-[10px] uppercase font-black text-secondary tracking-widest text-center min-w-[70px]">Recebido <br/><span className="text-placeholder font-mono tracking-tighter">{c.dataRecebimento?.split('-').reverse().join('/')}</span></span>}
+                      <button onClick={(e) => { e.stopPropagation(); setContaToDelete(c); }} className="bg-red-900/30 text-red-400 hover:bg-red-900/50 p-1.5 rounded tooltip" title="Excluir conta">
+                        <Trash2 size={14} />
                       </button>
-                    )}
-                    {c.status === 'Recebido' && <span className="text-[10px] uppercase font-black text-secondary tracking-widest block text-center min-w-[70px]">Recebido <br/><span className="text-placeholder font-mono tracking-tighter">{c.dataRecebimento?.split('-').reverse().join('/')}</span></span>}
+                    </div>
                   </td>
                 </tr>
               )})}
@@ -158,6 +172,21 @@ export function ContasReceber({ data, updateData }: any) {
            data={data} 
            onClose={() => setSelectedOverviewVenda(null)} 
         />
+      )}
+
+      {contaToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md p-6 border border-border text-center">
+            <Trash2 size={40} className="text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-primary mb-2">Excluir Conta a Receber</h3>
+            <p className="text-sm text-muted mb-1">Cliente: <strong className="text-primary">{contaToDelete.cliente}</strong></p>
+            <p className="text-sm text-muted mb-6">Valor: <strong className="text-primary">{formatCurrency(contaToDelete.valor)}</strong></p>
+            <div className="flex justify-center gap-4">
+              <button onClick={() => setContaToDelete(null)} className="px-4 py-2 border border-border rounded-lg text-muted font-bold hover:bg-surface-alt">Cancelar</button>
+              <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700">Excluir</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {contaToReceive && (

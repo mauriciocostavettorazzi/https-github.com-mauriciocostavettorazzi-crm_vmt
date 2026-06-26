@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatCurrency, generateId, parseMonetaryValue, formatMonetaryInput, calculateStatusAtrasado } from '../utils';
-import { PlusCircle, Search, CheckCircle } from 'lucide-react';
+import { PlusCircle, Search, CheckCircle, Trash2 } from 'lucide-react';
+import { toast } from '../toast';
 import { VendaOverviewModal } from './VendaOverviewModal';
 
 export function ContasPagar({ data, updateData }: any) {
@@ -24,6 +25,14 @@ export function ContasPagar({ data, updateData }: any) {
   const [dateToPay, setDateToPay] = useState(new Date().toISOString().substring(0, 10));
 
   const [contaToPay, setContaToPay] = useState<any>(null);
+  const [contaToDelete, setContaToDelete] = useState<any>(null);
+
+  const confirmDelete = () => {
+    if (!contaToDelete) return;
+    updateData({ contasPagar: data.contasPagar.filter((c: any) => c.id !== contaToDelete.id) });
+    toast('Conta excluída.', 'info');
+    setContaToDelete(null);
+  };
 
   // Update parcelas whenever dependencies change and it's set to "valores iguais"
   React.useEffect(() => {
@@ -353,12 +362,17 @@ export function ContasPagar({ data, updateData }: any) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
-                    {c.status !== 'Pago' && (
-                      <button onClick={(e) => { e.stopPropagation(); setContaToPay(c); }} className="bg-emerald-900/30 text-emerald-400 hover:bg-green-100 flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded tooltip w-full" title="Marcar como pago">
-                        <CheckCircle size={14} /> Baixar
+                    <div className="flex items-center justify-center gap-2">
+                      {c.status !== 'Pago' && (
+                        <button onClick={(e) => { e.stopPropagation(); setContaToPay(c); }} className="bg-emerald-900/30 text-emerald-400 hover:bg-green-100 flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded tooltip" title="Marcar como pago">
+                          <CheckCircle size={14} /> Baixar
+                        </button>
+                      )}
+                      {c.status === 'Pago' && <span className="text-[10px] uppercase font-black text-secondary tracking-widest text-center min-w-[70px]">Pago <br/><span className="text-placeholder font-mono tracking-tighter">{c.dataPagamento?.split('-').reverse().join('/')}</span></span>}
+                      <button onClick={(e) => { e.stopPropagation(); setContaToDelete(c); }} className="bg-red-900/30 text-red-400 hover:bg-red-900/50 p-1.5 rounded tooltip" title="Excluir conta">
+                        <Trash2 size={14} />
                       </button>
-                    )}
-                    {c.status === 'Pago' && <span className="text-[10px] uppercase font-black text-secondary tracking-widest block text-center min-w-[70px]">Pago <br/><span className="text-placeholder font-mono tracking-tighter">{c.dataPagamento?.split('-').reverse().join('/')}</span></span>}
+                    </div>
                   </td>
                 </tr>
               )})}
@@ -376,6 +390,21 @@ export function ContasPagar({ data, updateData }: any) {
            data={data} 
            onClose={() => setSelectedOverviewVenda(null)} 
         />
+      )}
+
+      {contaToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md p-6 border border-border text-center">
+            <Trash2 size={40} className="text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-primary mb-2">Excluir Conta a Pagar</h3>
+            <p className="text-sm text-muted mb-1">Fornecedor: <strong className="text-primary">{contaToDelete.fornecedor}</strong></p>
+            <p className="text-sm text-muted mb-6">Valor: <strong className="text-primary">{formatCurrency(contaToDelete.valor)}</strong></p>
+            <div className="flex justify-center gap-4">
+              <button onClick={() => setContaToDelete(null)} className="px-4 py-2 border border-border rounded-lg text-muted font-bold hover:bg-surface-alt">Cancelar</button>
+              <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700">Excluir</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {contaToPay && (
