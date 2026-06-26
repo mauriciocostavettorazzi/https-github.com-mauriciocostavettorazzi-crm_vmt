@@ -9,7 +9,9 @@ const INITIAL_DATA: CRMData = {
   voos: [],
   contasReceber: [],
   contasPagar: [],
-  leads: []
+  leads: [],
+  cotacoes: [],
+  comissoes: [],
 };
 
 const ROW_ID = 'default';
@@ -75,6 +77,8 @@ function parseData(raw: any): CRMData {
     ...raw,
     pessoas: migrateToFessoas(raw),
     leads: raw.leads || [],
+    cotacoes: raw.cotacoes || [],
+    comissoes: raw.comissoes || [],
     contasReceber: (raw.contasReceber || []).map((c: any) => ({
       ...c,
       status: calculateStatusAtrasado(c.vencimento, c.status) as any

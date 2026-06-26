@@ -133,6 +133,53 @@ export type Lead = {
   origem?: 'WhatsApp' | 'Instagram' | 'Indicação' | 'Site' | 'Outro';
 };
 
+export type VendaTarefa = {
+  id: string;
+  titulo: string;
+  feita: boolean;
+  prazo?: string;
+  criadoEm: string;
+};
+
+export type SeguroViagem = {
+  seguradora: string;
+  apolice: string;
+  cobertura?: string;
+  validade?: string;
+  valor?: number;
+};
+
+export type Cotacao = {
+  id: string;
+  cliente: string;
+  destino: string;
+  tipo: 'Passagem Aérea' | 'Hotel' | 'Pacote' | 'Locação de Veículo' | 'Serviço Corporativo' | 'Seguro';
+  periodoIda: string;
+  periodoVolta?: string;
+  adultos: number;
+  criancas?: number;
+  valorEstimado?: number;
+  status: 'Em cotação' | 'Enviada' | 'Aprovada' | 'Recusada' | 'Expirada';
+  prazoValidade?: string;
+  observacoes?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+};
+
+export type Comissao = {
+  id: string;
+  vendaId?: string;
+  fornecedor: string;
+  descricao?: string;
+  valorEsperado: number;
+  valorRecebido?: number;
+  dataEsperada?: string;
+  dataRecebida?: string;
+  status: 'Pendente' | 'Recebida' | 'Parcial' | 'Cancelada';
+  observacoes?: string;
+  criadoEm: string;
+};
+
 export type Venda = {
   id: string;
   cliente: string;
@@ -151,6 +198,11 @@ export type Venda = {
   custo?: number;
   fornecedorCusto?: string;
   hospedagens?: HospedagemItem[];
+  // Novos campos
+  passageiros?: { pessoaId: string; nome: string }[];
+  tarefas?: VendaTarefa[];
+  seguro?: SeguroViagem;
+  documentos?: PessoaDocumento[];
 };
 
 export type Voo = {
@@ -197,6 +249,8 @@ export type CRMData = {
   contasPagar: ContaPagar[];
   pessoas: Pessoa[];
   leads: Lead[];
+  cotacoes: Cotacao[];
+  comissoes: Comissao[];
   // Legacy (mantidos para migração)
   clientes?: Cliente[];
   fornecedores?: Fornecedor[];

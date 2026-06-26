@@ -6,7 +6,10 @@ import { Voos } from './components/Voos';
 import { ContasReceber } from './components/ContasReceber';
 import { ContasPagar } from './components/ContasPagar';
 import { Pessoas } from './components/Pessoas';
-import { Home, Briefcase, Plane, Download, Upload, Users, Sun, Moon, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { Cotacoes } from './components/Cotacoes';
+import { Calendario } from './components/Calendario';
+import { Comissoes } from './components/Comissoes';
+import { Home, Briefcase, Plane, Download, Upload, Users, Sun, Moon, CheckCircle2, XCircle, Info, FileText, CalendarDays, DollarSign } from 'lucide-react';
 import { registerToast } from './toast';
 
 export default function App() {
@@ -52,6 +55,9 @@ export default function App() {
     { id: 'receber', label: 'A Receber', icon: Download },
     { id: 'pagar', label: 'A Pagar', icon: Upload },
     { id: 'pessoas', label: 'Pessoas', icon: Users },
+    { id: 'cotacoes', label: 'Cotações', icon: FileText },
+    { id: 'calendario', label: 'Calendário', icon: CalendarDays },
+    { id: 'comissoes', label: 'Comissões', icon: DollarSign },
   ];
 
   if (loading || storeLoading) {
@@ -160,6 +166,9 @@ export default function App() {
           {activeTab === 'receber' && <ContasReceber data={data} updateData={updateData} />}
           {activeTab === 'pagar' && <ContasPagar data={data} updateData={updateData} />}
           {activeTab === 'pessoas' && <Pessoas data={data} updateData={updateData} />}
+          {activeTab === 'cotacoes' && <Cotacoes data={data} updateData={updateData} />}
+          {activeTab === 'calendario' && <Calendario data={data} />}
+          {activeTab === 'comissoes' && <Comissoes data={data} updateData={updateData} />}
         </div>
       </main>
 

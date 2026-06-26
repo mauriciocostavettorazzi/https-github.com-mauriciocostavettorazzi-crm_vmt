@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { formatCurrency, isCheckinLiberado, getCheckinUrl, calculateStatusAtrasado } from '../utils';
-import { Plane, TrendingUp, DollarSign, AlertCircle, Filter, CalendarDays, BarChart as BarChartIcon, PieChart as PieChartIcon } from 'lucide-react';
-import { isWithinInterval, addDays, isPast } from 'date-fns';
+import { Plane, TrendingUp, DollarSign, AlertCircle, Filter, CalendarDays, BarChart as BarChartIcon, PieChart as PieChartIcon, AlertTriangle, Gift, FileWarning, CheckSquare, Users, FileText } from 'lucide-react';
+import { isWithinInterval, addDays, isPast, subDays } from 'date-fns';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 
 export function Dashboard({ data }: any) {
@@ -95,6 +95,72 @@ export function Dashboard({ data }: any) {
     return vd >= start && vd <= end;
   }).sort((a: any, b: any) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime()).slice(0, 5);
 
+  // ----- ALERTAS -----
+  const alertas = useMemo(() => {
+    const items: { tipo: 'error'|'warn'|'info'; label: string; sub: string }[] = [];
+    const hoje = new Date();
+    // Passaportes
+    (data.pessoas || []).forEach((p: any) => {
+      if (!p.passaporteValidade) return;
+      const d = new Date(p.passaporteValidade + 'T12:00:00');
+      const diff = Math.ceil((d.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+      if (diff < 0) items.push({ tipo: 'error', label: `Passaporte VENCIDO — ${p.nome}`, sub: `Venceu em ${d.toLocaleDateString('pt-BR')}` });
+      else if (diff <= 180) items.push({ tipo: 'warn', label: `Passaporte vence em ${diff} dias — ${p.nome}`, sub: `Válido até ${d.toLocaleDateString('pt-BR')}` });
+    });
+    // Vistos
+    (data.pessoas || []).forEach((p: any) => {
+      if (!p.vistoValidade) return;
+      const d = new Date(p.vistoValidade + 'T12:00:00');
+      const diff = Math.ceil((d.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+      if (diff < 0) items.push({ tipo: 'error', label: `Visto VENCIDO — ${p.nome}`, sub: `Venceu em ${d.toLocaleDateString('pt-BR')}` });
+      else if (diff <= 60) items.push({ tipo: 'warn', label: `Visto vence em ${diff} dias — ${p.nome}`, sub: `Válido até ${d.toLocaleDateString('pt-BR')}` });
+    });
+    // Aniversários hoje / próx 3 dias
+    (data.pessoas || []).forEach((p: any) => {
+      if (!p.dataNascimento) return;
+      const d = new Date(p.dataNascimento + 'T12:00:00');
+      const thisYear = new Date(hoje.getFullYear(), d.getMonth(), d.getDate());
+      const diff = Math.ceil((thisYear.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+      if (diff === 0) items.push({ tipo: 'info', label: `🎂 Aniversário hoje — ${p.nome}`, sub: `Não esqueça de parabenizar!` });
+      else if (diff > 0 && diff <= 3) items.push({ tipo: 'info', label: `🎂 Aniversário em ${diff} dias — ${p.nome}`, sub: d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }) });
+    });
+    // Tarefas vencidas
+    let tarefasVencidas = 0;
+    (data.vendas || []).forEach((v: any) => {
+      (v.tarefas || []).filter((t: any) => !t.feita && t.prazo && new Date(t.prazo) < hoje).forEach(() => tarefasVencidas++);
+    });
+    if (tarefasVencidas > 0) items.push({ tipo: 'error', label: `${tarefasVencidas} tarefa(s) vencida(s) em vendas`, sub: 'Acesse Vendas e verifique o checklist.' });
+    // Contas vencidas
+    const contasVencidasP = (data.contasPagar || []).filter((c: any) => c.status === 'Atrasado').length;
+    const contasVencidasR = (data.contasReceber || []).filter((c: any) => calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado').length;
+    if (contasVencidasP > 0) items.push({ tipo: 'error', label: `${contasVencidasP} conta(s) a pagar em atraso`, sub: 'Verifique A Pagar.' });
+    if (contasVencidasR > 0) items.push({ tipo: 'error', label: `${contasVencidasR} conta(s) a receber em atraso`, sub: 'Verifique A Receber.' });
+    return items;
+  }, [data]);
+
+  // Novos KPIs
+  const ticketMedio = vendasFiltradas.length > 0 ? valorVendas / vendasFiltradas.length : 0;
+  const totalLeads = (data.leads || []).length;
+  const leadsConvertidos = (data.leads || []).filter((l: any) => l.stage === 'fechado').length;
+  const taxaConversao = totalLeads > 0 ? Math.round((leadsConvertidos / totalLeads) * 100) : 0;
+  const topClientes = useMemo(() => {
+    const map: Record<string, number> = {};
+    (data.vendas || []).filter((v: any) => v.status !== 'Cancelado').forEach((v: any) => {
+      map[v.cliente] = (map[v.cliente] || 0) + (v.valorBruto || 0);
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [data.vendas]);
+  const topDestinos = useMemo(() => {
+    const map: Record<string, number> = {};
+    (data.voos || []).filter((v: any) => v.status !== 'Cancelado').forEach((v: any) => {
+      if (v.destino) map[v.destino] = (map[v.destino] || 0) + 1;
+    });
+    (data.cotacoes || []).filter((c: any) => c.destino).forEach((c: any) => {
+      map[c.destino] = (map[c.destino] || 0) + 1;
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [data.voos, data.cotacoes]);
+
   // ----- CHARTS DATA -----
 
   // Sales by type
@@ -180,6 +246,27 @@ export function Dashboard({ data }: any) {
          </div>
       </div>
 
+      {/* ── Painel de Alertas ── */}
+      {alertas.length > 0 && (
+        <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+          <div className="px-5 py-3 bg-red-900/20 border-b border-red-900/40 flex items-center gap-2">
+            <AlertTriangle size={16} className="text-red-400" />
+            <h4 className="text-xs font-black uppercase tracking-widest text-red-400">Alertas ({alertas.length})</h4>
+          </div>
+          <div className="divide-y divide-border max-h-52 overflow-y-auto">
+            {alertas.map((a, i) => (
+              <div key={i} className={`flex items-start gap-3 px-5 py-3 ${a.tipo === 'error' ? 'bg-red-900/10' : a.tipo === 'warn' ? 'bg-amber-900/10' : 'bg-sky-900/10'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${a.tipo === 'error' ? 'bg-red-400' : a.tipo === 'warn' ? 'bg-amber-400' : 'bg-sky-400'}`} />
+                <div>
+                  <p className={`text-sm font-bold ${a.tipo === 'error' ? 'text-red-400' : a.tipo === 'warn' ? 'text-amber-400' : 'text-sky-400'}`}>{a.label}</p>
+                  <p className="text-xs text-muted">{a.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-[#1D9E75] hover:shadow-md transition-shadow">
@@ -228,6 +315,38 @@ export function Dashboard({ data }: any) {
           <p className={`text-[10px] inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase ${valorReceber - valorPagar >= 0 ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'}`}>
             A Receber − A Pagar
           </p>
+        </div>
+      </div>
+
+      {/* ── Novos KPIs ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-surface border border-border border-b-4 border-b-purple-500 rounded-xl p-4">
+          <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider">Ticket Médio</p>
+          <p className="text-2xl font-black text-purple-400 mt-1">{formatCurrency(ticketMedio)}</p>
+          <p className="text-[10px] text-muted mt-1">por venda no período</p>
+        </div>
+        <div className="bg-surface border border-border border-b-4 border-b-teal-500 rounded-xl p-4">
+          <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider">Conversão Lead→Venda</p>
+          <p className="text-2xl font-black text-teal-400 mt-1">{taxaConversao}%</p>
+          <p className="text-[10px] text-muted mt-1">{leadsConvertidos}/{totalLeads} leads fechados</p>
+        </div>
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider flex items-center gap-1 mb-2"><Users size={10}/> Top Clientes</p>
+          {topClientes.length === 0 ? <p className="text-xs text-muted">—</p> : topClientes.map(([nome, val], i) => (
+            <div key={nome} className="flex items-center justify-between text-xs py-0.5">
+              <span className="text-muted truncate max-w-[100px]"><span className="text-placeholder mr-1">{i+1}.</span>{nome}</span>
+              <span className="font-bold text-[#1D9E75]">{formatCurrency(val)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider flex items-center gap-1 mb-2"><FileText size={10}/> Top Destinos</p>
+          {topDestinos.length === 0 ? <p className="text-xs text-muted">—</p> : topDestinos.map(([dest, cnt], i) => (
+            <div key={dest} className="flex items-center justify-between text-xs py-0.5">
+              <span className="text-muted truncate max-w-[100px]"><span className="text-placeholder mr-1">{i+1}.</span>{dest}</span>
+              <span className="font-bold text-sky-400">{cnt}x</span>
+            </div>
+          ))}
         </div>
       </div>
 

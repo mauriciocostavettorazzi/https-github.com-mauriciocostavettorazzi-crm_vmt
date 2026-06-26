@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatCurrency, maskCpfCnpj, generateId, parseMonetaryValue, formatMonetaryInput } from '../utils';
-import { PlusCircle, Search, Trash2, Edit, XCircle, X, Filter, ShoppingCart, BedDouble } from 'lucide-react';
+import { PlusCircle, Search, Trash2, Edit, XCircle, X, Filter, ShoppingCart, BedDouble, Users, CheckSquare, Square, Shield, Paperclip } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { toast } from '../toast';
 import { addDays } from 'date-fns';
 import { VendaOverviewModal } from './VendaOverviewModal';
@@ -61,6 +62,22 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
     incluirHospedagem: false,
     hospedagens: [{ id: generateId(), nome: '', plataforma: 'Booking.com', voucher: '', checkIn: '', checkOut: '', quartos: 1, tipoQuarto: 'Standard', regimeAlimentar: 'Café da Manhã', cidade: '', observacoes: '' }],
+
+    // Passageiros
+    passageiros: [] as { pessoaId: string; nome: string }[],
+    passageirosSearch: '',
+
+    // Tarefas
+    tarefas: [] as { id: string; titulo: string; feita: boolean; prazo?: string; criadoEm: string }[],
+    novaTarefa: '',
+    novaTarefaPrazo: '',
+
+    // Seguro
+    incluirSeguro: false,
+    seguro: { seguradora: '', apolice: '', cobertura: '', validade: '', valor: '' },
+
+    // Documentos (gerenciados direto na venda salva)
+    documentos: [] as any[],
   });
 
   const [formData, setFormData] = useState(initForm());
@@ -95,6 +112,10 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
       statusR: editingId ? data.vendas.find((v:any) => v.id === vendaId)?.statusR : false,
       statusV: editingId ? data.vendas.find((v:any) => v.id === vendaId)?.statusV : false,
       hospedagens: formData.incluirHospedagem ? formData.hospedagens.filter((h: any) => h.nome) : [],
+      passageiros: formData.passageiros || [],
+      tarefas: formData.tarefas || [],
+      seguro: formData.incluirSeguro && formData.seguro.seguradora ? { ...formData.seguro, valor: formData.seguro.valor ? parseMonetaryValue(formData.seguro.valor) : 0 } : undefined,
+      documentos: formData.documentos || [],
     };
     
     // Voos
@@ -216,6 +237,15 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
        incluirHospedagem: (venda.hospedagens || []).length > 0,
        hospedagens: (venda.hospedagens || []).length > 0 ? venda.hospedagens : [{ id: generateId(), nome: '', plataforma: 'Booking.com', voucher: '', checkIn: '', checkOut: '', quartos: 1, tipoQuarto: 'Standard', regimeAlimentar: 'Café da Manhã', cidade: '', observacoes: '' }],
+
+       passageiros: venda.passageiros || [],
+       passageirosSearch: '',
+       tarefas: venda.tarefas || [],
+       novaTarefa: '',
+       novaTarefaPrazo: '',
+       incluirSeguro: !!(venda.seguro?.seguradora),
+       seguro: venda.seguro ? { ...venda.seguro, valor: venda.seguro.valor ? formatMonetaryInput(venda.seguro.valor) : '' } : { seguradora: '', apolice: '', cobertura: '', validade: '', valor: '' },
+       documentos: venda.documentos || [],
      });
      setEditingId(venda.id);
      setIsFormOpen(true);
@@ -919,6 +949,147 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── Passageiros ── */}
+            <div className="md:col-span-2 xl:col-span-4 space-y-3 mt-2 border-t border-border pt-4">
+              <h5 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
+                <Users size={16} className="text-[#1D9E75]" /> Passageiros da Viagem
+              </h5>
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-placeholder" />
+                <input type="text" placeholder="Buscar passageiro pelo nome..."
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-border-hover rounded bg-surface text-primary"
+                  value={formData.passageirosSearch}
+                  onChange={e => setFormData({ ...formData, passageirosSearch: e.target.value })} />
+              </div>
+              {formData.passageirosSearch.length >= 2 && (
+                <div className="border border-border rounded-lg overflow-hidden max-h-36 overflow-y-auto">
+                  {(data.pessoas || []).filter((p: any) =>
+                    !formData.passageiros.some((x: any) => x.pessoaId === p.id) &&
+                    p.nome.toLowerCase().includes(formData.passageirosSearch.toLowerCase())
+                  ).map((p: any) => (
+                    <button key={p.id} type="button"
+                      onClick={() => setFormData({ ...formData, passageiros: [...formData.passageiros, { pessoaId: p.id, nome: p.nome }], passageirosSearch: '' })}
+                      className="w-full text-left px-3 py-2 hover:bg-surface-alt text-sm text-primary border-b border-border last:border-0 flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-[#1D9E75]/20 text-emerald-400 text-xs flex items-center justify-center font-bold">{p.nome[0]}</div>
+                      <span>{p.nome}</span>
+                      <span className="text-xs text-muted">{(p.tipo || []).join(', ')}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {formData.passageiros.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formData.passageiros.map((p: any) => (
+                    <span key={p.pessoaId} className="flex items-center gap-1 bg-sky-900/30 text-sky-400 border border-sky-700 text-xs font-bold px-2 py-1 rounded-full">
+                      {p.nome}
+                      <button type="button" onClick={() => setFormData({ ...formData, passageiros: formData.passageiros.filter((x: any) => x.pessoaId !== p.pessoaId) })}>
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Seguro de Viagem ── */}
+            <div className="md:col-span-2 xl:col-span-4 space-y-3 mt-2 border-t border-border pt-4">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={formData.incluirSeguro}
+                  onChange={e => setFormData({ ...formData, incluirSeguro: e.target.checked })} />
+                <h5 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
+                  <Shield size={16} className="text-[#1D9E75]" /> Seguro de Viagem
+                </h5>
+              </div>
+              {formData.incluirSeguro && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-surface border border-border rounded-lg">
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Seguradora</label>
+                    <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.seguro.seguradora} onChange={e => setFormData({ ...formData, seguro: { ...formData.seguro, seguradora: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Nº Apólice</label>
+                    <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm font-mono" value={formData.seguro.apolice} onChange={e => setFormData({ ...formData, seguro: { ...formData.seguro, apolice: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Cobertura</label>
+                    <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.seguro.cobertura || ''} onChange={e => setFormData({ ...formData, seguro: { ...formData.seguro, cobertura: e.target.value } })} placeholder="Ex: Básico, Premium..." /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Validade</label>
+                    <input type="date" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.seguro.validade || ''} onChange={e => setFormData({ ...formData, seguro: { ...formData.seguro, validade: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Valor (R$)</label>
+                    <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.seguro.valor || ''} onChange={e => setFormData({ ...formData, seguro: { ...formData.seguro, valor: e.target.value } })} /></div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Tarefas / Checklist ── */}
+            <div className="md:col-span-2 xl:col-span-4 space-y-3 mt-2 border-t border-border pt-4">
+              <h5 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
+                <CheckSquare size={16} className="text-[#1D9E75]" /> Checklist da Venda
+              </h5>
+              <div className="flex gap-2">
+                <input type="text" placeholder="Nova tarefa..." value={formData.novaTarefa}
+                  onChange={e => setFormData({ ...formData, novaTarefa: e.target.value })}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault();
+                      if (!formData.novaTarefa.trim()) return;
+                      setFormData({ ...formData, tarefas: [...formData.tarefas, { id: generateId(), titulo: formData.novaTarefa.trim(), feita: false, prazo: formData.novaTarefaPrazo, criadoEm: new Date().toISOString() }], novaTarefa: '', novaTarefaPrazo: '' });
+                    }
+                  }}
+                  className="flex-1 border border-border-hover rounded p-1.5 text-sm bg-surface text-primary" />
+                <input type="date" value={formData.novaTarefaPrazo} onChange={e => setFormData({ ...formData, novaTarefaPrazo: e.target.value })}
+                  className="border border-border-hover rounded p-1.5 text-sm bg-surface text-primary w-36" />
+                <button type="button" onClick={() => {
+                  if (!formData.novaTarefa.trim()) return;
+                  setFormData({ ...formData, tarefas: [...formData.tarefas, { id: generateId(), titulo: formData.novaTarefa.trim(), feita: false, prazo: formData.novaTarefaPrazo, criadoEm: new Date().toISOString() }], novaTarefa: '', novaTarefaPrazo: '' });
+                }} className="bg-[#1D9E75] text-white px-3 py-1.5 rounded text-sm font-bold"><PlusCircle size={14} /></button>
+              </div>
+              <div className="space-y-1.5">
+                {formData.tarefas.map((t: any) => (
+                  <div key={t.id} className="flex items-center gap-2 bg-surface border border-border rounded p-2">
+                    <button type="button" onClick={() => setFormData({ ...formData, tarefas: formData.tarefas.map((x: any) => x.id === t.id ? { ...x, feita: !x.feita } : x) })}>
+                      {t.feita ? <CheckSquare size={16} className="text-[#1D9E75]" /> : <Square size={16} className="text-muted" />}
+                    </button>
+                    <span className={`flex-1 text-sm ${t.feita ? 'line-through text-muted' : 'text-primary'}`}>{t.titulo}</span>
+                    {t.prazo && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${new Date(t.prazo) < new Date() && !t.feita ? 'bg-red-900/30 text-red-400' : 'text-placeholder'}`}>{new Date(t.prazo).toLocaleDateString('pt-BR')}</span>}
+                    <button type="button" onClick={() => setFormData({ ...formData, tarefas: formData.tarefas.filter((x: any) => x.id !== t.id) })} className="text-red-400 hover:text-red-300"><X size={13} /></button>
+                  </div>
+                ))}
+                {formData.tarefas.length === 0 && <p className="text-xs text-muted">Nenhuma tarefa. Adicione acima e pressione Enter.</p>}
+              </div>
+            </div>
+
+            {/* ── Documentos da Venda ── */}
+            {editingId && (
+              <div className="md:col-span-2 xl:col-span-4 space-y-3 mt-2 border-t border-border pt-4">
+                <h5 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
+                  <Paperclip size={16} className="text-[#1D9E75]" /> Documentos Anexados
+                </h5>
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-[#1D9E75] font-bold hover:underline">
+                  <PlusCircle size={14} /> Anexar documento
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={async (e) => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    const path = `vendas/${editingId}/${generateId()}_${file.name}`;
+                    const { error } = await supabase.storage.from('documentos').upload(path, file);
+                    if (error) { toast('Erro ao enviar.', 'error'); return; }
+                    const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path);
+                    const doc = { id: generateId(), nome: file.name, tipo: 'Outro', url: urlData.publicUrl, tamanho: file.size, criadoEm: new Date().toISOString() };
+                    const newDocs = [...formData.documentos, doc];
+                    setFormData({ ...formData, documentos: newDocs });
+                    updateData({ vendas: data.vendas.map((v: any) => v.id === editingId ? { ...v, documentos: newDocs } : v) });
+                    toast('Documento anexado!');
+                  }} />
+                </label>
+                {formData.documentos.map((doc: any) => (
+                  <div key={doc.id} className="flex items-center justify-between bg-surface border border-border rounded px-3 py-2">
+                    <p className="text-sm text-primary truncate max-w-xs">{doc.nome}</p>
+                    <div className="flex gap-2">
+                      <a href={doc.url} target="_blank" rel="noreferrer" className="text-[#1D9E75] text-xs font-bold hover:underline">Ver</a>
+                      <button type="button" onClick={() => {
+                        const newDocs = formData.documentos.filter((d: any) => d.id !== doc.id);
+                        setFormData({ ...formData, documentos: newDocs });
+                        updateData({ vendas: data.vendas.map((v: any) => v.id === editingId ? { ...v, documentos: newDocs } : v) });
+                      }} className="text-red-400 hover:text-red-300"><X size={13} /></button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
