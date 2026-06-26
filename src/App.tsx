@@ -5,9 +5,8 @@ import { Vendas } from './components/Vendas';
 import { Voos } from './components/Voos';
 import { ContasReceber } from './components/ContasReceber';
 import { ContasPagar } from './components/ContasPagar';
-import { Clientes } from './components/Clientes';
-import { Fornecedores } from './components/Fornecedores';
-import { Home, Briefcase, Plane, Download, Upload, Users, Building2, Sun, Moon, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { Pessoas } from './components/Pessoas';
+import { Home, Briefcase, Plane, Download, Upload, Users, Sun, Moon, CheckCircle2, XCircle, Info } from 'lucide-react';
 import { registerToast } from './toast';
 
 export default function App() {
@@ -52,8 +51,7 @@ export default function App() {
     { id: 'voos', label: 'Voos', icon: Plane },
     { id: 'receber', label: 'A Receber', icon: Download },
     { id: 'pagar', label: 'A Pagar', icon: Upload },
-    { id: 'clientes', label: 'Clientes', icon: Users },
-    { id: 'fornecedores', label: 'Fornecedores', icon: Building2 }
+    { id: 'pessoas', label: 'Pessoas', icon: Users },
   ];
 
   if (loading || storeLoading) {
@@ -161,8 +159,7 @@ export default function App() {
           {activeTab === 'voos' && <Voos data={data} updateData={updateData} />}
           {activeTab === 'receber' && <ContasReceber data={data} updateData={updateData} />}
           {activeTab === 'pagar' && <ContasPagar data={data} updateData={updateData} />}
-          {activeTab === 'clientes' && <Clientes data={data} updateData={updateData} />}
-          {activeTab === 'fornecedores' && <Fornecedores data={data} updateData={updateData} />}
+          {activeTab === 'pessoas' && <Pessoas data={data} updateData={updateData} />}
         </div>
       </main>
 

@@ -4,8 +4,7 @@ import { calculateStatusAtrasado } from './utils';
 import { supabase } from './lib/supabase';
 
 const INITIAL_DATA: CRMData = {
-  clientes: [],
-  fornecedores: [],
+  pessoas: [],
   vendas: [],
   voos: [],
   contasReceber: [],
@@ -15,17 +14,72 @@ const INITIAL_DATA: CRMData = {
 
 const ROW_ID = 'default';
 
+function migrateToFessoas(raw: any): any[] {
+  const pessoas = raw.pessoas || [];
+  if (pessoas.length > 0) return pessoas;
+  // Migrate legacy clientes → pessoas
+  const fromClientes = (raw.clientes || []).map((c: any) => ({
+    id: c.id,
+    nome: c.nome,
+    tipo: ['Cliente'],
+    ativo: true,
+    telefone: c.telefone,
+    email: c.email,
+    documento: c.documento,
+    passaporte: c.passaporte,
+    passaporteValidade: c.passaporteValidade,
+    nacionalidade: c.nacionalidade,
+    dataNascimento: c.dataNascimento,
+    genero: c.genero,
+    profissao: c.profissao,
+    cep: c.cep,
+    endereco: c.endereco,
+    numero: c.numero,
+    bairro: c.bairro,
+    cidade: c.cidade,
+    estado: c.estado,
+    contatoEmergenciaNome: c.contatoEmergenciaNome,
+    contatoEmergenciaTel: c.contatoEmergenciaTel,
+    observacoes: c.observacoes,
+    documentos: c.documentos || [],
+    familia: [],
+    criadoEm: c.criadoEm || new Date().toISOString(),
+  }));
+  const fromFornecedores = (raw.fornecedores || []).map((f: any) => ({
+    id: f.id,
+    nome: f.nome,
+    tipo: ['Fornecedor'],
+    ativo: true,
+    telefone: f.telefone,
+    email: f.email,
+    documento: f.documento,
+    cep: f.cep,
+    endereco: f.endereco,
+    numero: f.numero,
+    bairro: f.bairro,
+    cidade: f.cidade,
+    estado: f.estado,
+    observacoes: f.observacoes,
+    isFornecedorViagem: f.isFornecedorViagem || false,
+    documentos: [],
+    familia: [],
+    criadoEm: new Date().toISOString(),
+  }));
+  return [...fromClientes, ...fromFornecedores];
+}
+
 function parseData(raw: any): CRMData {
   if (!raw) return INITIAL_DATA;
-  const parsed = raw as CRMData;
   return {
     ...INITIAL_DATA,
-    ...parsed,
-    contasReceber: (parsed.contasReceber || []).map(c => ({
+    ...raw,
+    pessoas: migrateToFessoas(raw),
+    leads: raw.leads || [],
+    contasReceber: (raw.contasReceber || []).map((c: any) => ({
       ...c,
       status: calculateStatusAtrasado(c.vencimento, c.status) as any
     })),
-    contasPagar: (parsed.contasPagar || []).map(c => ({
+    contasPagar: (raw.contasPagar || []).map((c: any) => ({
       ...c,
       status: calculateStatusAtrasado(c.vencimento, c.status) as any
     }))

@@ -27,7 +27,7 @@ export function Voos({ data, updateData }: any) {
   });
 
   const vendasPassagem = data.vendas.filter((v: any) => v.tipo === 'Passagem Aérea' && v.status !== 'Cancelado');
-  const fornecedoresViagem = data.fornecedores?.filter((f: any) => f.isFornecedorViagem) || [];
+  const fornecedoresViagem = (data.pessoas || []).filter((p: any) => p.tipo?.includes('Fornecedor') && p.isFornecedorViagem);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

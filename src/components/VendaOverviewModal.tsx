@@ -11,7 +11,7 @@ interface VendaOverviewModalProps {
 
 export function VendaOverviewModal({ venda, data, onClose }: VendaOverviewModalProps) {
   const voos = data.voos.filter((v: any) => v.vendaId === venda.id);
-  const clienteData = data.clientes.find((c: any) => c.nome === venda.cliente);
+  const clienteData = (data.pessoas || []).find((p: any) => p.nome === venda.cliente);
   const contasPagar = data.contasPagar.filter((c: any) => c.vendaId === venda.id);
   const contasReceber = data.contasReceber.filter((c: any) => c.vendaId === venda.id);
 

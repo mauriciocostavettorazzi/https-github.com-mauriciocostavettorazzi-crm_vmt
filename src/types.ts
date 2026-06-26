@@ -1,10 +1,67 @@
-export type ClienteDocumento = {
+export type PessoaDocumento = {
   id: string;
   nome: string;
-  tipo: 'Passaporte' | 'RG' | 'CNH' | 'Visto' | 'Outro';
+  tipo: 'Passaporte' | 'RG' | 'CNH' | 'Visto' | 'Contrato' | 'Outro';
   url: string;
   tamanho?: number;
   criadoEm: string;
+};
+
+// Legacy alias
+export type ClienteDocumento = PessoaDocumento;
+
+export type Pessoa = {
+  id: string;
+  nome: string;
+  tipo: ('Passageiro' | 'Cliente' | 'Fornecedor' | 'Representante')[];
+  rating?: number;
+  ativo: boolean;
+  // Contato
+  telefone?: string;
+  email?: string;
+  redeSocial?: string;
+  site?: string;
+  chavePix?: string;
+  aceitaComunicacao?: boolean;
+  // Documentos
+  documento?: string;
+  rg?: string;
+  orgaoEmissorRg?: string;
+  inscricaoMunicipal?: string;
+  idEstrangeiro?: string;
+  nacionalidade?: string;
+  estadoCivil?: 'Solteiro' | 'Casado' | 'Divorciado' | 'Viúvo' | 'União Estável' | '';
+  passaporte?: string;
+  passaporteEmissao?: string;
+  passaporteValidade?: string;
+  passaporteNacionalidade?: string;
+  visto?: string;
+  vistoValidade?: string;
+  // Informações
+  dataNascimento?: string;
+  genero?: 'Masculino' | 'Feminino' | 'Outro' | '';
+  profissao?: string;
+  renda?: number;
+  canalVenda?: string;
+  contatoEmergenciaNome?: string;
+  contatoEmergenciaTel?: string;
+  // Endereço
+  pais?: string;
+  cep?: string;
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  // Família (IDs de outras pessoas)
+  familia?: string[];
+  // Documentos anexados
+  documentos?: PessoaDocumento[];
+  observacoes?: string;
+  criadoEm?: string;
+  // Fornecedor específico
+  isFornecedorViagem?: boolean;
 };
 
 export type Cliente = {
@@ -138,7 +195,9 @@ export type CRMData = {
   voos: Voo[];
   contasReceber: ContaReceber[];
   contasPagar: ContaPagar[];
-  clientes: Cliente[];
-  fornecedores: Fornecedor[];
+  pessoas: Pessoa[];
   leads: Lead[];
+  // Legacy (mantidos para migração)
+  clientes?: Cliente[];
+  fornecedores?: Fornecedor[];
 };

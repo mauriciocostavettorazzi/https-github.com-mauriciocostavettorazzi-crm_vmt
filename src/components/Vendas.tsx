@@ -65,7 +65,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
   const [formData, setFormData] = useState(initForm());
 
-  const fornecedoresViagem = data.fornecedores?.filter((f: any) => f.isFornecedorViagem) || [];
+  const fornecedoresViagem = (data.pessoas || []).filter((p: any) => p.tipo?.includes('Fornecedor') && p.isFornecedorViagem);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -392,8 +392,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                   <select required className="w-full border border-border-hover rounded-md p-2" 
                     value={formData.cliente} onChange={e => setFormData({...formData, cliente: e.target.value})}>
                     <option value="">Selecione um cliente...</option>
-                {data.clientes?.map((c: any) => (
-                  <option key={c.id} value={c.nome}>{c.nome} - {c.documento}</option>
+                {(data.pessoas || []).filter((p: any) => p.tipo?.includes('Cliente') || p.tipo?.includes('Passageiro')).map((p: any) => (
+                  <option key={p.id} value={p.nome}>{p.nome}{p.documento ? ` - ${p.documento}` : ''}</option>
                 ))}
               </select>
             </div>
@@ -467,8 +467,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                  setFormData({...formData, fornecedoresCustoList: list});
                                }}>
                                <option value="">Selecione...</option>
-                               {data.fornecedores?.map((f: any) => (
-                                 <option key={f.id} value={f.nome}>{f.nome}</option>
+                               {(data.pessoas || []).filter((p: any) => p.tipo?.includes('Fornecedor')).map((p: any) => (
+                                 <option key={p.id} value={p.nome}>{p.nome}</option>
                                ))}
                              </select>
                            </div>
@@ -562,8 +562,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                  setFormData({...formData, pagarList: list});
                                }}>
                               <option value="">Selecione...</option>
-                              {data.fornecedores?.map((f: any) => (
-                                <option key={f.id} value={f.nome}>{f.nome}</option>
+                              {(data.pessoas || []).filter((p: any) => p.tipo?.includes('Fornecedor')).map((p: any) => (
+                                <option key={p.id} value={p.nome}>{p.nome}</option>
                               ))}
                             </select>
                           </div>

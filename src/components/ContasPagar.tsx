@@ -215,8 +215,8 @@ export function ContasPagar({ data, updateData }: any) {
               <select required className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.fornecedor} onChange={e => setFormData({...formData, fornecedor: e.target.value})}>
                 <option value="">Selecione...</option>
-                {data.fornecedores?.map((f: any) => (
-                  <option key={f.id} value={f.nome}>{f.nome}</option>
+                {(data.pessoas || []).filter((p: any) => p.tipo?.includes('Fornecedor')).map((p: any) => (
+                  <option key={p.id} value={p.nome}>{p.nome}</option>
                 ))}
               </select>
             </div>
