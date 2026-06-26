@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { useCRMStore } from '../store';
 import { formatCurrency, maskCpfCnpj, generateId, parseMonetaryValue, formatMonetaryInput } from '../utils';
-import { PlusCircle, Search, Trash2, Edit, XCircle, X } from 'lucide-react';
+import { PlusCircle, Search, Trash2, Edit, XCircle, X, Filter, ShoppingCart, BedDouble } from 'lucide-react';
+import { toast } from '../toast';
 import { addDays } from 'date-fns';
 import { VendaOverviewModal } from './VendaOverviewModal';
+import { LeadsFunil } from './LeadsFunil';
+import type { Lead, HospedagemItem } from '../types';
 
 export function Vendas({ data, updateData, setActiveTab }: any) {
+  const [activeSection, setActiveSection] = useState<'vendas' | 'leads'>('vendas');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedOverviewVenda, setSelectedOverviewVenda] = useState<any>(null);
@@ -15,6 +18,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
   
   const [vendaToDelete, setVendaToDelete] = useState<string | null>(null);
   const [vendaToCancel, setVendaToCancel] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const initialVoo = {
     id: generateId(),
@@ -54,6 +58,9 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
     incluirPagar: false,
     pagarList: [{ id: generateId(), fornecedor: '', valor: '', vencimento: addDays(new Date(), 15).toISOString().substring(0, 10) }],
+
+    incluirHospedagem: false,
+    hospedagens: [{ id: generateId(), nome: '', plataforma: 'Booking.com', voucher: '', checkIn: '', checkOut: '', quartos: 1, tipoQuarto: 'Standard', regimeAlimentar: 'Café da Manhã', cidade: '', observacoes: '' }],
   });
 
   const [formData, setFormData] = useState(initForm());
@@ -86,7 +93,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
       criadoEm: formData.dataVenda ? new Date(formData.dataVenda + 'T12:00:00Z').toISOString() : new Date().toISOString(),
       statusP: editingId ? data.vendas.find((v:any) => v.id === vendaId)?.statusP : false,
       statusR: editingId ? data.vendas.find((v:any) => v.id === vendaId)?.statusR : false,
-      statusV: editingId ? data.vendas.find((v:any) => v.id === vendaId)?.statusV : false
+      statusV: editingId ? data.vendas.find((v:any) => v.id === vendaId)?.statusV : false,
+      hospedagens: formData.incluirHospedagem ? formData.hospedagens.filter((h: any) => h.nome) : [],
     };
     
     // Voos
@@ -168,7 +176,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
     setIsFormOpen(false);
     setEditingId(null);
     setFormData(initForm());
-    alert('Venda registrada/atualizada com sucesso!');
+    toast(editingId ? 'Venda atualizada com sucesso!' : 'Venda registrada com sucesso!');
   };
 
   const handleEdit = (venda: any) => {
@@ -205,6 +213,9 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
        incluirPagar: pagar.length > 0,
        pagarList: pagar.length > 0 ? pagar.map((p: any) => ({ id: p.id, fornecedor: p.fornecedor, valor: formatMonetaryInput(p.valor), vencimento: p.vencimento })) : [{ id: generateId(), fornecedor: '', valor: '', vencimento: addDays(new Date(), 15).toISOString().substring(0, 10) }],
+
+       incluirHospedagem: (venda.hospedagens || []).length > 0,
+       hospedagens: (venda.hospedagens || []).length > 0 ? venda.hospedagens : [{ id: generateId(), nome: '', plataforma: 'Booking.com', voucher: '', checkIn: '', checkOut: '', quartos: 1, tipoQuarto: 'Standard', regimeAlimentar: 'Café da Manhã', cidade: '', observacoes: '' }],
      });
      setEditingId(venda.id);
      setIsFormOpen(true);
@@ -264,8 +275,19 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
     });
   };
 
+  const searchFilter = (v: any) => {
+    if (!searchTerm) return true;
+    const s = searchTerm.toLowerCase();
+    return (
+      v.cliente?.toLowerCase().includes(s) ||
+      v.tipo?.toLowerCase().includes(s) ||
+      v.numeroPedido?.toLowerCase().includes(s) ||
+      v.status?.toLowerCase().includes(s)
+    );
+  };
+
   const vendasAtivasBase = data.vendas.filter((v: any) => !(v.statusP && v.statusR && v.statusV));
-  const vendasAtivas = [...vendasAtivasBase].sort((a: any, b: any) => {
+  const vendasAtivas = [...vendasAtivasBase].filter(searchFilter).sort((a: any, b: any) => {
     let valA = a[sortCol];
     let valB = b[sortCol];
     
@@ -282,7 +304,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
   });
 
   const vendasAnterioresBase = data.vendas.filter((v: any) => v.statusP && v.statusR && v.statusV);
-  const vendasAnteriores = [...vendasAnterioresBase].sort((a: any, b: any) => {
+  const vendasAnteriores = [...vendasAnterioresBase].filter(searchFilter).sort((a: any, b: any) => {
     let valA = a[sortCol];
     let valB = b[sortCol];
     
@@ -307,10 +329,40 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
       }
   };
 
+  const handleConvertLead = (lead: Lead) => {
+    setActiveSection('vendas');
+    setFormData({ ...initForm(), cliente: lead.nome });
+    setEditingId(null);
+    setIsFormOpen(true);
+    toast(`Lead "${lead.nome}" carregado no formulário de venda.`, 'info');
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-end mb-6">
-        <button 
+      {/* Section tabs */}
+      <div className="flex items-center gap-2 bg-surface border border-border rounded-xl p-1 w-fit">
+        <button onClick={() => setActiveSection('vendas')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-colors ${activeSection === 'vendas' ? 'bg-[#1D9E75] text-white' : 'text-muted hover:text-primary'}`}>
+          <ShoppingCart size={15} /> Vendas
+        </button>
+        <button onClick={() => setActiveSection('leads')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-colors ${activeSection === 'leads' ? 'bg-[#1D9E75] text-white' : 'text-muted hover:text-primary'}`}>
+          <Filter size={15} /> Funil de Leads
+          {(data.leads || []).filter((l: any) => !['fechado','perdido'].includes(l.stage)).length > 0 && (
+            <span className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+              {(data.leads || []).filter((l: any) => !['fechado','perdido'].includes(l.stage)).length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeSection === 'leads' && (
+        <LeadsFunil data={data} updateData={updateData} onConvertLead={handleConvertLead} />
+      )}
+
+      {activeSection === 'vendas' && <>
+      <div className="flex justify-end">
+        <button
           onClick={() => setIsFormOpen(!isFormOpen)}
           className="bg-[#1D9E75] text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:brightness-110 uppercase flex items-center gap-2"
         >
@@ -336,7 +388,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
             <div className="p-6 overflow-y-auto">
               <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                  <label className="block text-sm font-medium text-muted mb-1">Cliente</label>
                   <select required className="w-full border border-border-hover rounded-md p-2" 
                     value={formData.cliente} onChange={e => setFormData({...formData, cliente: e.target.value})}>
                     <option value="">Selecione um cliente...</option>
@@ -346,12 +398,12 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Data da Venda</label>
+              <label className="block text-sm font-medium text-muted mb-1">Data da Venda</label>
               <input required type="date" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.dataVenda} onChange={e => setFormData({...formData, dataVenda: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Venda</label>
+              <label className="block text-sm font-medium text-muted mb-1">Tipo de Venda</label>
               <select className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})}>
                 <option>Passagem Aérea</option>
@@ -363,7 +415,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor Bruto (R$)</label>
+              <label className="block text-sm font-medium text-muted mb-1">Valor Bruto (R$)</label>
               <input required type="text" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.valorBruto} 
                 onChange={e => {
@@ -389,7 +441,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                
                {formData.modoLucro === 'Comissao' ? (
                   <div className="md:col-span-2 lg:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Comissão de Lucro (R$)</label>
+                    <label className="block text-sm font-medium text-muted mb-1">Comissão de Lucro (R$)</label>
                     <input required type="text" className="w-full border border-border-hover rounded-md p-2" 
                       value={formData.comissao} onChange={e => setFormData({...formData, comissao: e.target.value})} onBlur={e => setFormData({...formData, comissao: formatMonetaryInput(e.target.value)})} />
                   </div>
@@ -407,7 +459,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                              </button>
                            )}
                            <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor {idx + 1}</label>
+                             <label className="block text-sm font-medium text-muted mb-1">Fornecedor {idx + 1}</label>
                              <select required className="w-full border border-border-hover rounded-md p-2" 
                                value={fc.fornecedor} onChange={e => {
                                  const list = [...formData.fornecedoresCustoList];
@@ -421,7 +473,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                              </select>
                            </div>
                            <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Custo (R$)</label>
+                             <label className="block text-sm font-medium text-muted mb-1">Custo (R$)</label>
                              <input required type="text" className="w-full border border-border-hover rounded-md p-2 pl-2" 
                                value={fc.valor} onChange={e => {
                                  const list = [...formData.fornecedoresCustoList];
@@ -447,7 +499,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Forma Pagamento</label>
+              <label className="block text-sm font-medium text-muted mb-1">Forma Pagamento</label>
               <select className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.formaPagamento} onChange={e => setFormData({...formData, formaPagamento: e.target.value})}>
                 <option>Cartão</option>
@@ -457,12 +509,12 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nº OS/Pedido</label>
+              <label className="block text-sm font-medium text-muted mb-1">Nº OS/Pedido</label>
               <input type="text" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.numeroPedido} onChange={e => setFormData({...formData, numeroPedido: e.target.value})} />
             </div>
             <div className="md:col-span-2 xl:col-span-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+              <label className="block text-sm font-medium text-muted mb-1">Observações</label>
               <textarea className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.observacoes} onChange={e => setFormData({...formData, observacoes: e.target.value})} />
             </div>
@@ -474,7 +526,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
               <div className="space-y-3">
                  <h5 className="font-bold text-white uppercase tracking-wider text-sm border-b border-border pb-2">Contas a Receber (Automático)</h5>
                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento (Agendamento)</label>
+                    <label className="block text-sm font-medium text-muted mb-1">Vencimento (Agendamento)</label>
                     <input required type="date" className="w-full border border-border-hover rounded-md p-2 text-sm" 
                       value={formData.receberVencimento} onChange={e => setFormData({...formData, receberVencimento: e.target.value})} />
                  </div>
@@ -783,6 +835,93 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
               )}
             </div>
 
+            {/* Hospedagem */}
+            {(formData.tipo === 'Hotel' || formData.tipo === 'Pacote') && (
+              <div className="md:col-span-2 xl:col-span-4 space-y-3 mt-2 border-t border-border pt-4">
+                <div className="flex items-center space-x-2 border-b border-border pb-2">
+                  <input type="checkbox" checked={formData.incluirHospedagem}
+                    onChange={e => setFormData({ ...formData, incluirHospedagem: e.target.checked })} />
+                  <h5 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
+                    <BedDouble size={16} className="text-[#1D9E75]" /> Registrar Hospedagem
+                  </h5>
+                </div>
+                {formData.incluirHospedagem && (
+                  <div className="space-y-4">
+                    {formData.hospedagens.map((h: any, idx: number) => (
+                      <div key={h.id} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-3 bg-surface border border-border rounded-lg relative">
+                        {formData.hospedagens.length > 1 && (
+                          <button type="button" onClick={() => {
+                            const list = [...formData.hospedagens]; list.splice(idx, 1);
+                            setFormData({ ...formData, hospedagens: list });
+                          }} className="absolute top-2 right-2 text-red-400 hover:text-red-300"><X size={14} /></button>
+                        )}
+                        <div className="col-span-2">
+                          <label className="block text-xs font-bold text-muted uppercase mb-1">Nome do Hotel / Propriedade</label>
+                          <input type="text" className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface text-primary"
+                            value={h.nome} onChange={e => { const l = [...formData.hospedagens]; l[idx].nome = e.target.value; setFormData({ ...formData, hospedagens: l }); }} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted uppercase mb-1">Plataforma</label>
+                          <select className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface text-primary"
+                            value={h.plataforma} onChange={e => { const l = [...formData.hospedagens]; l[idx].plataforma = e.target.value; setFormData({ ...formData, hospedagens: l }); }}>
+                            <option>Booking.com</option><option>Airbnb</option><option>Direto</option><option>Expedia</option><option>Outro</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted uppercase mb-1">Voucher / Reserva Nº</label>
+                          <input type="text" className="w-full border border-border-hover rounded text-sm p-1.5 font-mono bg-surface text-primary"
+                            value={h.voucher} onChange={e => { const l = [...formData.hospedagens]; l[idx].voucher = e.target.value; setFormData({ ...formData, hospedagens: l }); }} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted uppercase mb-1">Check-in</label>
+                          <input type="date" className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface text-primary"
+                            value={h.checkIn} onChange={e => { const l = [...formData.hospedagens]; l[idx].checkIn = e.target.value; setFormData({ ...formData, hospedagens: l }); }} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted uppercase mb-1">Check-out</label>
+                          <input type="date" className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface text-primary"
+                            value={h.checkOut} onChange={e => { const l = [...formData.hospedagens]; l[idx].checkOut = e.target.value; setFormData({ ...formData, hospedagens: l }); }} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted uppercase mb-1">Nº Quartos</label>
+                          <input type="number" min={1} className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface text-primary"
+                            value={h.quartos} onChange={e => { const l = [...formData.hospedagens]; l[idx].quartos = Number(e.target.value); setFormData({ ...formData, hospedagens: l }); }} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted uppercase mb-1">Tipo de Quarto</label>
+                          <select className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface text-primary"
+                            value={h.tipoQuarto} onChange={e => { const l = [...formData.hospedagens]; l[idx].tipoQuarto = e.target.value; setFormData({ ...formData, hospedagens: l }); }}>
+                            <option>Standard</option><option>Superior</option><option>Deluxe</option><option>Suite</option><option>Master Suite</option><option>Outro</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted uppercase mb-1">Regime Alimentar</label>
+                          <select className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface text-primary"
+                            value={h.regimeAlimentar} onChange={e => { const l = [...formData.hospedagens]; l[idx].regimeAlimentar = e.target.value; setFormData({ ...formData, hospedagens: l }); }}>
+                            <option>Sem Refeição</option><option>Café da Manhã</option><option>Meia Pensão</option><option>All-Inclusive</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted uppercase mb-1">Cidade</label>
+                          <input type="text" className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface text-primary"
+                            value={h.cidade} onChange={e => { const l = [...formData.hospedagens]; l[idx].cidade = e.target.value; setFormData({ ...formData, hospedagens: l }); }} />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-xs font-bold text-muted uppercase mb-1">Observações</label>
+                          <input type="text" className="w-full border border-border-hover rounded text-sm p-1.5 bg-surface text-primary"
+                            value={h.observacoes} onChange={e => { const l = [...formData.hospedagens]; l[idx].observacoes = e.target.value; setFormData({ ...formData, hospedagens: l }); }} />
+                        </div>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setFormData({ ...formData, hospedagens: [...formData.hospedagens, { id: generateId(), nome: '', plataforma: 'Booking.com', voucher: '', checkIn: '', checkOut: '', quartos: 1, tipoQuarto: 'Standard', regimeAlimentar: 'Café da Manhã', cidade: '', observacoes: '' }] })}
+                      className="text-[#1D9E75] text-xs font-bold uppercase tracking-wider flex items-center gap-1 hover:brightness-110">
+                      <PlusCircle size={14} /> Adicionar outra hospedagem
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="md:col-span-2 xl:col-span-4 flex justify-end mt-4">
               <button type="submit" className="bg-[#1D9E75] text-white px-6 py-2 rounded-md font-bold uppercase tracking-wider text-sm hover:bg-emerald-700">
                     Salvar Venda
@@ -795,8 +934,18 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
       )}
 
       <div className="bg-surface rounded-2xl shadow-md border border-border overflow-hidden flex flex-col mb-6">
-        <div className="p-4 bg-surface-alt border-b border-border flex justify-between items-center">
+        <div className="p-4 bg-surface-alt border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <h4 className="font-black text-white uppercase tracking-wider">Vendas em Andamento</h4>
+            <div className="relative w-full sm:w-64">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-placeholder" />
+              <input
+                type="text"
+                placeholder="Buscar cliente, tipo, OS..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 text-sm bg-surface border border-border rounded-lg text-primary placeholder:text-placeholder focus:outline-none focus:border-[#1D9E75]"
+              />
+            </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -971,6 +1120,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
           </div>
         </div>
       )}
+      </>}
     </div>
   );
 }

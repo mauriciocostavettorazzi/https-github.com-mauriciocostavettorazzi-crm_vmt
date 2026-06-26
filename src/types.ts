@@ -1,8 +1,22 @@
+export type ClienteDocumento = {
+  id: string;
+  nome: string;
+  tipo: 'Passaporte' | 'RG' | 'CNH' | 'Visto' | 'Outro';
+  url: string;
+  tamanho?: number;
+  criadoEm: string;
+};
+
 export type Cliente = {
   id: string;
   nome: string;
   documento: string;
   passaporte?: string;
+  passaporteValidade?: string;
+  nacionalidade?: string;
+  dataNascimento?: string;
+  genero?: 'Masculino' | 'Feminino' | 'Outro' | '';
+  profissao?: string;
   telefone: string;
   email?: string;
   cep?: string;
@@ -11,7 +25,10 @@ export type Cliente = {
   bairro?: string;
   cidade?: string;
   estado?: string;
+  contatoEmergenciaNome?: string;
+  contatoEmergenciaTel?: string;
   observacoes: string;
+  documentos?: ClienteDocumento[];
 };
 
 export type Fornecedor = {
@@ -30,6 +47,35 @@ export type Fornecedor = {
   isFornecedorViagem?: boolean;
 };
 
+export type HospedagemItem = {
+  id: string;
+  nome: string;
+  plataforma: 'Booking.com' | 'Airbnb' | 'Direto' | 'Expedia' | 'Outro';
+  voucher: string;
+  checkIn: string;
+  checkOut: string;
+  quartos: number;
+  tipoQuarto: string;
+  regimeAlimentar: 'Sem Refeição' | 'Café da Manhã' | 'Meia Pensão' | 'All-Inclusive';
+  cidade: string;
+  observacoes: string;
+};
+
+export type Lead = {
+  id: string;
+  nome: string;
+  telefone: string;
+  email?: string;
+  interesse: string;
+  destino?: string;
+  orcamento?: number;
+  stage: 'novo' | 'contato' | 'proposta' | 'aprovacao' | 'fechado' | 'perdido';
+  criadoEm: string;
+  atualizadoEm: string;
+  observacoes?: string;
+  origem?: 'WhatsApp' | 'Instagram' | 'Indicação' | 'Site' | 'Outro';
+};
+
 export type Venda = {
   id: string;
   cliente: string;
@@ -41,12 +87,13 @@ export type Venda = {
   status: 'Em aberto' | 'Confirmado' | 'Cancelado';
   observacoes: string;
   criadoEm: string;
-  statusP?: boolean; // Valor pago (fornecedor)
-  statusR?: boolean; // Valor recebido (cliente)
-  statusV?: boolean; // Voado / Concluído
+  statusP?: boolean;
+  statusR?: boolean;
+  statusV?: boolean;
   modoLucro?: 'Comissao' | 'Custo';
   custo?: number;
   fornecedorCusto?: string;
+  hospedagens?: HospedagemItem[];
 };
 
 export type Voo = {
@@ -93,4 +140,5 @@ export type CRMData = {
   contasPagar: ContaPagar[];
   clientes: Cliente[];
   fornecedores: Fornecedor[];
+  leads: Lead[];
 };

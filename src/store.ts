@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { CRMData, Venda, Voo, ContaReceber, ContaPagar } from './types';
+import { CRMData } from './types';
 import { calculateStatusAtrasado } from './utils';
-import { auth, db } from './lib/firebase';
-import { doc as getDocRef, setDoc as setD, getDoc as getD, onSnapshot as onSnap } from 'firebase/firestore';
+import { supabase } from './lib/supabase';
 
 const INITIAL_DATA: CRMData = {
   clientes: [],
@@ -10,94 +9,99 @@ const INITIAL_DATA: CRMData = {
   vendas: [],
   voos: [],
   contasReceber: [],
-  contasPagar: []
+  contasPagar: [],
+  leads: []
 };
+
+const ROW_ID = 'default';
+
+function parseData(raw: any): CRMData {
+  if (!raw) return INITIAL_DATA;
+  const parsed = raw as CRMData;
+  return {
+    ...INITIAL_DATA,
+    ...parsed,
+    contasReceber: (parsed.contasReceber || []).map(c => ({
+      ...c,
+      status: calculateStatusAtrasado(c.vencimento, c.status) as any
+    })),
+    contasPagar: (parsed.contasPagar || []).map(c => ({
+      ...c,
+      status: calculateStatusAtrasado(c.vencimento, c.status) as any
+    }))
+  };
+}
 
 export function useCRMStore() {
   const [data, setData] = useState<CRMData>(INITIAL_DATA);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        const userRef = getDocRef(db, 'usersData', user.uid);
-        
-        // Listen to changes
-        const unsubscribeSnapshot = onSnap(userRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const parsed = docSnap.data().data as CRMData;
-             if(parsed) {
-                  parsed.contasReceber = (parsed.contasReceber || []).map(c => ({
-                    ...c,
-                    status: calculateStatusAtrasado(c.vencimento, c.status) as any
-                  }));
-                  parsed.contasPagar = (parsed.contasPagar || []).map(c => ({
-                    ...c,
-                    status: calculateStatusAtrasado(c.vencimento, c.status) as any
-                  }));
-                  setData({
-                    ...INITIAL_DATA,
-                    ...parsed,
-                    contasReceber: parsed.contasReceber,
-                    contasPagar: parsed.contasPagar
-                  });
-             } else {
-                 setData(INITIAL_DATA);
-             }
-          } else {
-            const stored = localStorage.getItem('@VoltaAoMundo:v2');
-            let initial = INITIAL_DATA;
-            if (stored) {
-              try {
-                initial = JSON.parse(stored);
-              } catch(e){}
-            }
-            setData(initial);
-            setD(userRef, { data: initial }, { merge: true });
+    // Initial load
+    supabase
+      .from('crm_data')
+      .select('data')
+      .eq('id', ROW_ID)
+      .single()
+      .then(({ data: row, error }) => {
+        if (error && error.code !== 'PGRST116') {
+          // PGRST116 = row not found, fallback to localStorage
+          console.error('Supabase load error:', error);
+        }
+        if (row?.data) {
+          setData(parseData(row.data));
+        } else {
+          // Fallback to localStorage for offline/dev use
+          const stored = localStorage.getItem('@VoltaAoMundo:v2');
+          if (stored) {
+            try { setData(parseData(JSON.parse(stored))); } catch { setData(INITIAL_DATA); }
           }
-          setLoading(false);
-        });
-
-        return () => unsubscribeSnapshot();
-      } else {
-        setData(INITIAL_DATA);
+        }
         setLoading(false);
-      }
-    });
+      });
 
-    return () => unsubscribeAuth();
+    // Realtime subscription
+    const channel = supabase
+      .channel('crm_data_changes')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'crm_data',
+        filter: `id=eq.${ROW_ID}`
+      }, (payload) => {
+        if (payload.new?.data) {
+          setData(parseData(payload.new.data));
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const updateData = async (newData: Partial<CRMData>) => {
     const updated = { ...data, ...newData };
-    setData(updated); // Optimistic update
-    
-    const user = auth.currentUser;
-    if (user) {
-      const userRef = getDocRef(db, 'usersData', user.uid);
-      
-      // Firestore does not support undefined values. Strip them.
-      const sanitize = (obj: any): any => {
-        if (obj === undefined) return null;
-        if (typeof obj !== 'object' || obj === null) return obj;
-        if (Array.isArray(obj)) return obj.map(sanitize);
-        const newObj: any = {};
-        for (const [key, val] of Object.entries(obj)) {
-          if (val !== undefined) {
-            newObj[key] = sanitize(val);
-          }
-        }
-        return newObj;
-      };
-      
-      const cleanData = sanitize(updated);
-      
-      try {
-        await setD(userRef, { data: cleanData }, { merge: true });
-      } catch (error) {
-        console.error("Database sync error:", error);
-        alert("Erro ao sincronizar com o banco de dados. A venda foi registrada apenas localmente, tente atualizar a página ou verificar sua conexão.");
+    setData(updated); // optimistic update
+
+    // Always persist to localStorage as backup
+    localStorage.setItem('@VoltaAoMundo:v2', JSON.stringify(updated));
+
+    const sanitize = (obj: any): any => {
+      if (obj === undefined) return null;
+      if (typeof obj !== 'object' || obj === null) return obj;
+      if (Array.isArray(obj)) return obj.map(sanitize);
+      const out: any = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (v !== undefined) out[k] = sanitize(v);
       }
+      return out;
+    };
+
+    const { error } = await supabase
+      .from('crm_data')
+      .upsert({ id: ROW_ID, data: sanitize(updated), updated_at: new Date().toISOString() });
+
+    if (error) {
+      console.error('Supabase save error:', error);
     }
   };
 

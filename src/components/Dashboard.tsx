@@ -181,7 +181,7 @@ export function Dashboard({ data }: any) {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-[#1D9E75] hover:shadow-md transition-shadow">
           <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
           <h4 className="text-xs font-black uppercase text-muted mb-1">Total Vendido</h4>
@@ -219,6 +219,15 @@ export function Dashboard({ data }: any) {
           <h4 className="text-xs font-black uppercase text-muted mb-1">Tks / Voos Emitidos</h4>
           <h3 className="text-2xl font-black text-primary truncate">{voosFiltrados.length}</h3>
           <p className="text-[10px] bg-sky-900/30 text-sky-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">Passageiros no ar</p>
+        </div>
+
+        <div className={`bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 hover:shadow-md transition-shadow ${valorReceber - valorPagar >= 0 ? 'border-l-emerald-400' : 'border-l-red-500'}`}>
+          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
+          <h4 className="text-xs font-black uppercase text-muted mb-1">Saldo Líquido</h4>
+          <h3 className={`text-2xl font-black truncate ${valorReceber - valorPagar >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{formatCurrency(valorReceber - valorPagar)}</h3>
+          <p className={`text-[10px] inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase ${valorReceber - valorPagar >= 0 ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'}`}>
+            A Receber − A Pagar
+          </p>
         </div>
       </div>
 

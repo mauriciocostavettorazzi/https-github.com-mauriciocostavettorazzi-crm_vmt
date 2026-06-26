@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useCRMStore } from '../store';
 import { formatCurrency, generateId, parseMonetaryValue, formatMonetaryInput, calculateStatusAtrasado } from '../utils';
 import { PlusCircle, Search, CheckCircle } from 'lucide-react';
 import { VendaOverviewModal } from './VendaOverviewModal';

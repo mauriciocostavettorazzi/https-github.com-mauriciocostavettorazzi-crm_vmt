@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useCRMStore } from '../store';
 import { formatCurrency, calculateStatusAtrasado } from '../utils';
 import { CheckCircle, Search } from 'lucide-react';
 import { VendaOverviewModal } from './VendaOverviewModal';
