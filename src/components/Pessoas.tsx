@@ -278,7 +278,9 @@ export function Pessoas({ data, updateData }: any) {
           <tbody className="text-sm border-t border-border">
             {listFiltered.map(p => {
               const alertColor = passagemAlert(p);
-              const familiaCount = [...new Set([...(p.familia || []), ...pessoas.filter(x => (x.familia || []).includes(p.id)).map(x => x.id)])].length;
+              const myFamiliaIds = (p.familia || []).map((f: any) => typeof f === 'string' ? f : f.id);
+              const inverseIds = pessoas.filter(x => (x.familia || []).some((f: any) => (typeof f === 'string' ? f : f.id) === p.id)).map(x => x.id);
+              const familiaCount = [...new Set([...myFamiliaIds, ...inverseIds])].length;
               return (
                 <tr key={p.id} onClick={() => openEdit(p)} className="border-b border-border hover:bg-surface-alt cursor-pointer transition-colors">
                   <td className="px-4 py-3">
