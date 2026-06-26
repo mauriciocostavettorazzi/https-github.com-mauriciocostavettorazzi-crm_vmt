@@ -242,6 +242,26 @@ export type ContaPagar = {
   dataPagamento?: string;
 };
 
+export type MensagemWpp = {
+  id: string;
+  tipo: 'pre-viagem' | 'pos-viagem' | 'aniversario' | 'manual';
+  pessoaNome: string;
+  telefone: string;
+  mensagem: string;
+  vendaId?: string;
+  vooId?: string;
+  status: 'pendente' | 'enviada' | 'ignorada';
+  criadoEm: string;
+  enviadaEm?: string;
+};
+
+export type TemplateWpp = {
+  id: string;
+  nome: string;
+  tipo: MensagemWpp['tipo'];
+  texto: string;
+};
+
 export type CRMData = {
   vendas: Venda[];
   voos: Voo[];
@@ -251,6 +271,8 @@ export type CRMData = {
   leads: Lead[];
   cotacoes: Cotacao[];
   comissoes: Comissao[];
+  mensagensWpp: MensagemWpp[];
+  templatesWpp: TemplateWpp[];
   // Legacy (mantidos para migração)
   clientes?: Cliente[];
   fornecedores?: Fornecedor[];

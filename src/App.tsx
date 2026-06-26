@@ -9,7 +9,8 @@ import { Pessoas } from './components/Pessoas';
 import { Cotacoes } from './components/Cotacoes';
 import { Calendario } from './components/Calendario';
 import { Comissoes } from './components/Comissoes';
-import { Home, Briefcase, Plane, Download, Upload, Users, Sun, Moon, CheckCircle2, XCircle, Info, FileText, CalendarDays, DollarSign } from 'lucide-react';
+import { Comunicacoes } from './components/Comunicacoes';
+import { Home, Briefcase, Plane, Download, Upload, Users, Sun, Moon, CheckCircle2, XCircle, Info, FileText, CalendarDays, DollarSign, MessageCircle } from 'lucide-react';
 import { registerToast } from './toast';
 
 export default function App() {
@@ -58,6 +59,7 @@ export default function App() {
     { id: 'cotacoes', label: 'Cotações', icon: FileText },
     { id: 'calendario', label: 'Calendário', icon: CalendarDays },
     { id: 'comissoes', label: 'Comissões', icon: DollarSign },
+    { id: 'comunicacoes', label: 'WhatsApp', icon: MessageCircle },
   ];
 
   if (loading || storeLoading) {
@@ -169,6 +171,7 @@ export default function App() {
           {activeTab === 'cotacoes' && <Cotacoes data={data} updateData={updateData} />}
           {activeTab === 'calendario' && <Calendario data={data} />}
           {activeTab === 'comissoes' && <Comissoes data={data} updateData={updateData} />}
+          {activeTab === 'comunicacoes' && <Comunicacoes data={data} updateData={updateData} />}
         </div>
       </main>
 
