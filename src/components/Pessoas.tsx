@@ -22,6 +22,11 @@ const TIPO_ICON: Record<string, any> = {
   Representante: Users,
 };
 
+const GRAU_OPTIONS = [
+  '', 'Cônjuge / Companheiro(a)', 'Filho(a)', 'Pai / Mãe', 'Irmão(ã)', 'Avô / Avó',
+  'Neto(a)', 'Tio(a)', 'Primo(a)', 'Sogro(a)', 'Responsável Financeiro', 'Grupo de Viagem', 'Outro',
+];
+
 const FILTER_OPTS = [
   { id: 'todos', label: 'Todos' },
   { id: 'Passageiro', label: 'Passageiros' },
@@ -133,9 +138,13 @@ export function Pessoas({ data, updateData }: any) {
     } catch {} finally { setCepLoading(false); }
   };
 
-  // Família helpers
-  const familiaIds = formData.familia || [];
-  const familiaMembers = pessoas.filter(p => familiaIds.includes(p.id));
+  // Família helpers — normaliza formato legado (string[]) para { id, grau }[]
+  const rawFamilia = formData.familia || [];
+  const familiaLinks: { id: string; grau?: string }[] = rawFamilia.map((f: any) =>
+    typeof f === 'string' ? { id: f, grau: '' } : f
+  );
+  const familiaIds = familiaLinks.map(f => f.id);
+
   const familiaResults = pessoas.filter(p =>
     p.id !== editingId &&
     !familiaIds.includes(p.id) &&
@@ -143,13 +152,26 @@ export function Pessoas({ data, updateData }: any) {
     p.nome.toLowerCase().includes(familiaSearch.toLowerCase())
   ).slice(0, 8);
 
-  const addFamilia = (id: string) => { fd({ familia: [...familiaIds, id] }); setFamiliaSearch(''); };
-  const removeFamilia = (id: string) => { fd({ familia: familiaIds.filter(x => x !== id) }); };
+  const addFamilia = (id: string) => {
+    fd({ familia: [...familiaLinks, { id, grau: '' }] });
+    setFamiliaSearch('');
+  };
+  const removeFamilia = (id: string) => {
+    fd({ familia: familiaLinks.filter(f => f.id !== id) });
+  };
+  const updateGrau = (id: string, grau: string) => {
+    fd({ familia: familiaLinks.map(f => f.id === id ? { ...f, grau } : f) });
+  };
 
-  // Família circles — find all pessoas that have this person in their familia too
-  const circleIds = pessoas
-    .filter(p => p.id !== editingId && (p.familia || []).includes(editingId || ''))
-    .map(p => p.id);
+  // Círculo inverso — pessoas que têm este cadastro na família delas
+  const circleLinks = pessoas
+    .filter(p => p.id !== editingId && (p.familia || []).some((f: any) => (typeof f === 'string' ? f : f.id) === editingId))
+    .map(p => {
+      const link = (p.familia || []).find((f: any) => (typeof f === 'string' ? f : f.id) === editingId);
+      return { pessoaId: p.id, grau: link && typeof link !== 'string' ? link.grau : '' };
+    });
+  const circleIds = circleLinks.map(c => c.pessoaId);
+
   const allFamiliaIds = [...new Set([...familiaIds, ...circleIds])];
   const allFamiliaMembers = pessoas.filter(p => allFamiliaIds.includes(p.id));
 
@@ -524,25 +546,44 @@ export function Pessoas({ data, updateData }: any) {
                       {allFamiliaMembers.map(p => {
                         const isLinkedHere = familiaIds.includes(p.id);
                         const isLinkedFromThem = circleIds.includes(p.id);
+                        const link = familiaLinks.find(f => f.id === p.id);
+                        const inverseLink = circleLinks.find(c => c.pessoaId === p.id);
                         return (
-                          <div key={p.id} className="flex items-center justify-between bg-surface-alt border border-border rounded-lg px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-[#1D9E75]/20 flex items-center justify-center text-emerald-400 font-black text-xs">
-                                {p.nome.charAt(0)}
+                          <div key={p.id} className="bg-surface-alt border border-border rounded-lg px-4 py-3 space-y-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-[#1D9E75]/20 flex items-center justify-center text-emerald-400 font-black text-xs shrink-0">
+                                  {p.nome.charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-primary">{p.nome}</p>
+                                  <div className="flex gap-1 mt-0.5">{p.tipo.map(t => <span key={t} className={`text-[9px] px-1 rounded border ${TIPO_COLOR[t]}`}>{t}</span>)}</div>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-sm font-bold text-primary">{p.nome}</p>
-                                <div className="flex gap-1 mt-0.5">{p.tipo.map(t => <span key={t} className={`text-[9px] px-1 rounded border ${TIPO_COLOR[t]}`}>{t}</span>)}</div>
+                              <div className="flex items-center gap-2">
+                                {isLinkedFromThem && !isLinkedHere && (
+                                  <span className="text-[9px] text-sky-400 font-bold uppercase bg-sky-900/20 px-2 py-0.5 rounded">Vínculo deles</span>
+                                )}
+                                {isLinkedHere && (
+                                  <button type="button" onClick={() => removeFamilia(p.id)} className="text-red-400 hover:text-red-300 p-1">
+                                    <X size={14} />
+                                  </button>
+                                )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              {isLinkedFromThem && !isLinkedHere && (
-                                <span className="text-[9px] text-sky-400 font-bold uppercase">Vínculo deles</span>
-                              )}
-                              {isLinkedHere && (
-                                <button type="button" onClick={() => removeFamilia(p.id)} className="text-red-400 hover:text-red-300">
-                                  <X size={14} />
-                                </button>
+                            {/* Grau de parentesco */}
+                            <div className="flex items-center gap-2 pl-11">
+                              {isLinkedHere ? (
+                                <select
+                                  value={link?.grau || ''}
+                                  onChange={e => updateGrau(p.id, e.target.value)}
+                                  className="flex-1 text-xs border border-border-hover rounded-md px-2 py-1 bg-surface text-primary focus:outline-none focus:border-[#1D9E75]">
+                                  {GRAU_OPTIONS.map(g => <option key={g} value={g}>{g || 'Grau de parentesco...'}</option>)}
+                                </select>
+                              ) : (
+                                inverseLink?.grau ? (
+                                  <span className="text-xs text-muted italic">{inverseLink.grau} (definido por eles)</span>
+                                ) : null
                               )}
                             </div>
                           </div>

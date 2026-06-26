@@ -54,8 +54,8 @@ export type Pessoa = {
   bairro?: string;
   cidade?: string;
   estado?: string;
-  // Família (IDs de outras pessoas)
-  familia?: string[];
+  // Família (vínculos com grau de parentesco)
+  familia?: { id: string; grau?: string }[];
   // Documentos anexados
   documentos?: PessoaDocumento[];
   observacoes?: string;
