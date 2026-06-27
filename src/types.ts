@@ -273,6 +273,12 @@ export type CRMData = {
   comissoes: Comissao[];
   mensagensWpp: MensagemWpp[];
   templatesWpp: TemplateWpp[];
+  // Módulo Acompanhamento
+  pacotes?: any[];
+  hospedagensAvulsas?: any[];
+  cruzeiros?: any[];
+  segurosAvulsos?: any[];
+  carrosLocados?: any[];
   // Legacy (mantidos para migração)
   clientes?: Cliente[];
   fornecedores?: Fornecedor[];

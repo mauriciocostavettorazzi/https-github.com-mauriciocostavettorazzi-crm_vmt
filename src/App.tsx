@@ -6,7 +6,8 @@ import { Voos } from './components/Voos';
 import { ContasReceber } from './components/ContasReceber';
 import { ContasPagar } from './components/ContasPagar';
 import { Pessoas } from './components/Pessoas';
-import { Cotacoes } from './components/Cotacoes';
+import { Acompanhamento } from './components/Acompanhamento';
+// import { Cotacoes } from './components/Cotacoes'; // desativado temporariamente
 import { Calendario } from './components/Calendario';
 import { Comissoes } from './components/Comissoes';
 import { Comunicacoes } from './components/Comunicacoes';
@@ -18,11 +19,11 @@ import {
 import { registerToast } from './toast';
 
 const NAV_PRINCIPAL = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'vendas',    label: 'Vendas',    icon: Briefcase },
-  { id: 'voos',      label: 'Voos',      icon: Plane },
-  { id: 'pessoas',   label: 'Pessoas',   icon: Users },
-  { id: 'cotacoes',  label: 'Cotações',  icon: FileText },
+  { id: 'dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
+  { id: 'vendas',         label: 'Vendas',         icon: Briefcase },
+  { id: 'acompanhamento', label: 'Acompanhamento', icon: Plane },
+  { id: 'pessoas',        label: 'Pessoas',        icon: Users },
+  // { id: 'cotacoes', label: 'Cotações', icon: FileText }, // desativado temporariamente
 ];
 
 const NAV_OPERACAO = [
@@ -300,12 +301,12 @@ export default function App() {
         <main className="flex-1 overflow-auto">
           <div className="p-6 max-w-[1240px] w-full mx-auto space-y-6">
             {activeTab === 'dashboard'    && <Dashboard    data={data} />}
-            {activeTab === 'vendas'       && <Vendas       data={data} updateData={updateData} setActiveTab={setActiveTab} />}
-            {activeTab === 'voos'         && <Voos         data={data} updateData={updateData} />}
+            {activeTab === 'vendas'         && <Vendas         data={data} updateData={updateData} setActiveTab={setActiveTab} />}
+            {activeTab === 'acompanhamento' && <Acompanhamento data={data} updateData={updateData} />}
             {activeTab === 'receber'      && <ContasReceber data={data} updateData={updateData} />}
             {activeTab === 'pagar'        && <ContasPagar  data={data} updateData={updateData} />}
             {activeTab === 'pessoas'      && <Pessoas      data={data} updateData={updateData} />}
-            {activeTab === 'cotacoes'     && <Cotacoes     data={data} updateData={updateData} />}
+            {/* {activeTab === 'cotacoes' && <Cotacoes data={data} updateData={updateData} />} */}
             {activeTab === 'calendario'   && <Calendario   data={data} />}
             {activeTab === 'comissoes'    && <Comissoes    data={data} updateData={updateData} />}
             {activeTab === 'comunicacoes' && <Comunicacoes data={data} updateData={updateData} />}

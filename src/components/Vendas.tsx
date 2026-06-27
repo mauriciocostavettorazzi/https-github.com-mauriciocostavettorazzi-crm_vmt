@@ -369,28 +369,10 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
   return (
     <div className="space-y-6">
-      {/* Section tabs */}
-      <div className="flex items-center gap-2 bg-surface border border-border rounded-xl p-1 w-fit">
-        <button onClick={() => setActiveSection('vendas')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-colors ${activeSection === 'vendas' ? 'bg-[#1D9E75] text-white' : 'text-muted hover:text-primary'}`}>
-          <ShoppingCart size={15} /> Vendas
-        </button>
-        <button onClick={() => setActiveSection('leads')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-colors ${activeSection === 'leads' ? 'bg-[#1D9E75] text-white' : 'text-muted hover:text-primary'}`}>
-          <Filter size={15} /> Funil de Leads
-          {(data.leads || []).filter((l: any) => !['fechado','perdido'].includes(l.stage)).length > 0 && (
-            <span className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-              {(data.leads || []).filter((l: any) => !['fechado','perdido'].includes(l.stage)).length}
-            </span>
-          )}
-        </button>
-      </div>
+      {/* Funil de Leads temporariamente desativado — preservado para implementação futura */}
+      {/* activeSection === 'leads' && <LeadsFunil ... /> */}
 
-      {activeSection === 'leads' && (
-        <LeadsFunil data={data} updateData={updateData} onConvertLead={handleConvertLead} />
-      )}
-
-      {activeSection === 'vendas' && <>
+      {true && <>
       <div className="flex justify-end">
         <button
           onClick={() => setIsFormOpen(!isFormOpen)}
