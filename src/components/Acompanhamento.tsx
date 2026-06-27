@@ -110,33 +110,66 @@ export function Acompanhamento({ data, updateData }: any) {
 
   const now = new Date();
 
-  // ── Voos: combina data.voos com voos embutidos nas vendas de pacote ─────────
-  const todosVoos = useMemo(() => {
+  // ── Voos avulsos: data.voos + voosList de vendas tipo "Passagem Aérea" ────────
+  const voosAvulsos = useMemo(() => {
     const diretos = (data.voos || []);
-    // Voos registrados dentro de vendas (tipo Pacote ou Passagem Aérea) via voosList
-    const deVendas: any[] = [];
-    (data.vendas || []).filter((v: any) => v.status !== 'Cancelado' && v.voosList?.length).forEach((v: any) => {
-      (v.voosList || []).forEach((voo: any) => {
-        if (!voo.dataPartida) return;
-        // Evitar duplicar se já existe em data.voos com mesmo localizador
-        const jaExiste = diretos.some((d: any) => d.localizador && d.localizador === voo.localizador);
-        if (!jaExiste) {
-          deVendas.push({
-            ...voo,
-            id: voo.id || `venda-${v.id}-${voo.id}`,
-            vendaId: v.id,
-            cliente: v.cliente,
-            passageiros: voo.passageiros || v.cliente,
-            status: 'Emitido',
-            _origem: 'venda',
-            _vendaCliente: v.cliente,
-            _vendaTipo: v.tipo,
-          });
-        }
+    const dePassagem: any[] = [];
+    (data.vendas || [])
+      .filter((v: any) => v.status !== 'Cancelado' && v.tipo === 'Passagem Aérea' && v.voosList?.length)
+      .forEach((v: any) => {
+        (v.voosList || []).forEach((voo: any) => {
+          if (!voo.dataPartida) return;
+          const jaExiste = diretos.some((d: any) => d.localizador && d.localizador === voo.localizador);
+          if (!jaExiste) {
+            dePassagem.push({
+              ...voo,
+              id: voo.id || `passagem-${v.id}-${voo.id}`,
+              vendaId: v.id,
+              passageiros: voo.passageiros || v.cliente,
+              status: 'Emitido',
+              _origem: 'passagem',
+              _vendaCliente: v.cliente,
+              _vendaTipo: v.tipo,
+            });
+          }
+        });
       });
-    });
-    return [...diretos, ...deVendas];
+    return [...diretos, ...dePassagem];
   }, [data.voos, data.vendas]);
+
+  // ── Voos de pacote: voosList de vendas tipo "Pacote" ─────────────────────────
+  const voosDePacote = useMemo(() => {
+    const diretos = (data.voos || []);
+    const result: any[] = [];
+    (data.vendas || [])
+      .filter((v: any) => v.status !== 'Cancelado' && v.tipo === 'Pacote' && v.voosList?.length)
+      .forEach((v: any) => {
+        (v.voosList || []).forEach((voo: any) => {
+          if (!voo.dataPartida) return;
+          const jaExiste = diretos.some((d: any) => d.localizador && d.localizador === voo.localizador);
+          if (!jaExiste) {
+            result.push({
+              ...voo,
+              id: voo.id || `pacote-${v.id}-${voo.id}`,
+              vendaId: v.id,
+              passageiros: voo.passageiros || v.cliente,
+              status: 'Emitido',
+              _origem: 'pacote',
+              _vendaCliente: v.cliente,
+              _vendaTipo: v.tipo,
+            });
+          }
+        });
+      });
+    return result;
+  }, [data.vendas]);
+
+  // ── Todos os voos (dashboard de embarques) ────────────────────────────────────
+  const todosVoos = useMemo(() => {
+    const ids = new Set(voosAvulsos.map((v: any) => v.id));
+    const extras = voosDePacote.filter((v: any) => !ids.has(v.id));
+    return [...voosAvulsos, ...extras];
+  }, [voosAvulsos, voosDePacote]);
 
   const proximosVoos = useMemo(() =>
     todosVoos
@@ -272,7 +305,7 @@ export function Acompanhamento({ data, updateData }: any) {
                   const is24h = new Date(voo.dataPartida).getTime() - now.getTime() < 86400000;
                   const isLiberado = isCheckinLiberado(voo.dataPartida);
                   const checkinUrl = getCheckinUrl(voo.ciaAerea, voo.localizador);
-                  const isPacote = !!voo._origem;
+                  const isPacote = voo._origem === 'pacote';
                   return (
                     <tr
                       key={voo.id}
@@ -375,6 +408,79 @@ export function Acompanhamento({ data, updateData }: any) {
           </details>
         )}
       </div>
+
+      {/* ── Voos (Passagem Aérea — produto avulso) ── */}
+      <Section icon={Plane} color={C.cyan} title="Voos — Passagem Aérea" count={voosAvulsos.filter((v: any) => v.status !== 'Cancelado' && v.status !== 'Voado').length} defaultOpen={false}>
+        <div className="p-4 flex justify-end" style={{ borderBottom: '1px solid var(--border-color)' }}>
+          <button onClick={() => openModal('voo')} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ background: C.cyan }}>
+            <PlusCircle size={15} /> Novo Voo
+          </button>
+        </div>
+        {voosAvulsos.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--text-muted)' }}>Nenhum voo avulso. Voos cadastrados aqui ou via vendas de Passagem Aérea aparecem nesta seção.</p>
+        ) : (
+          <table className="w-full text-left">
+            <thead><tr style={{ background: 'var(--bg-surface-alt)', borderBottom: '1px solid var(--border-color)' }}>
+              {['Passageiro / Voo', 'Trecho', 'Partida', 'Chegada', 'LOC', 'Emissão', 'Status', ''].map(h => (
+                <th key={h} className="px-4 py-3 text-[11px] font-bold" style={{ color: 'var(--text-placeholder)' }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {voosAvulsos.map((voo: any) => {
+                const is24h = new Date(voo.dataPartida).getTime() - now.getTime() < 86400000 && new Date(voo.dataPartida) > now;
+                const isLiberado = isCheckinLiberado(voo.dataPartida);
+                const checkinUrl = getCheckinUrl(voo.ciaAerea, voo.localizador);
+                const voado = voo.status === 'Voado' || new Date(voo.dataPartida) < now;
+                return (
+                  <tr key={voo.id} style={{ borderBottom: '1px solid var(--border-color)', opacity: voado ? 0.55 : 1, background: is24h ? `${C.magenta}08` : 'transparent' }}>
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-semibold truncate max-w-[180px]" style={{ color: 'var(--text-primary)' }}>{voo.passageiros || voo._vendaCliente}</p>
+                      <p className="font-mono-brand text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>{voo.ciaAerea} {voo.numeroVoo}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <IataChip code={voo.origem} />
+                        <span style={{ color: 'var(--text-faint)' }}>→</span>
+                        <IataChip code={voo.destino} />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-semibold" style={{ color: is24h ? C.red : 'var(--text-primary)' }}>
+                        {new Date(voo.dataPartida).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      {!voado && <Countdown dateStr={voo.dataPartida} />}
+                    </td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {voo.dataChegada ? new Date(voo.dataChegada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </td>
+                    <td className="px-4 py-3 font-mono-brand text-[11px]" style={{ color: C.cyan }}>{voo.localizador || '—'}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{voo.formaEmissao || '—'}</td>
+                    <td className="px-4 py-3">
+                      {voo._origem ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${C.cyan}22`, color: C.cyan }}>Emitido</span>
+                      ) : (
+                        <StatusBadge value={voo.status} onChange={s => updateStatus('voo', voo.id, s)} options={['Emitido', 'Reemitido', 'Voado', 'Cancelado']} />
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1.5 items-center">
+                        {isLiberado && checkinUrl !== '#' && (
+                          <a href={checkinUrl} target="_blank" rel="noreferrer" title="Check-in"
+                            className="p-1.5 rounded-lg" style={{ color: C.teal }}><ExternalLink size={13} /></a>
+                        )}
+                        {!voo._origem && <>
+                          <button onClick={() => openModal('voo', voo)} className="p-1.5 rounded-lg" style={{ color: C.cyan }}><Edit size={13} /></button>
+                          <button onClick={() => deleteItem('voo', voo.id)} className="p-1.5 rounded-lg" style={{ color: C.red }}><Trash2 size={13} /></button>
+                        </>}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </Section>
 
       {/* ── Pacotes ── */}
       <Section icon={Package2} color={C.orange} title="Pacotes" count={pacotes.filter((p: any) => p.status !== 'Cancelado').length}>
