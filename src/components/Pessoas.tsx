@@ -598,7 +598,7 @@ export function Pessoas({ data, updateData }: any) {
               </div>
               {/* Tabs */}
               <div className="flex gap-1 mt-4 flex-wrap">
-                {TABS.map(tab => (
+                {TABS.filter(tab => !(tab === 'Família' && formData.pessoaJuridica)).map(tab => (
                   <button key={tab} type="button" onClick={() => setActiveTab(tab)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === tab ? 'bg-[#1D9E75] text-white' : 'text-muted hover:text-primary'}`}>
                     {tab}
@@ -796,36 +796,70 @@ export function Pessoas({ data, updateData }: any) {
 
               {/* TAB: Informações */}
               {activeTab === 'Informações' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div><label className={labelCls}>Data de Nascimento</label><input type="date" className={inputCls} value={formData.dataNascimento || ''} onChange={e => fd({ dataNascimento: e.target.value })} /></div>
-                  <div><label className={labelCls}>Gênero</label>
-                    <select className={inputCls} value={formData.genero || ''} onChange={e => fd({ genero: e.target.value as any })}>
-                      <option value="">Não informado</option><option>Masculino</option><option>Feminino</option><option>Outro</option>
-                    </select>
-                  </div>
-                  <div><label className={labelCls}>Profissão</label><input type="text" className={inputCls} value={formData.profissao || ''} onChange={e => fd({ profissao: e.target.value })} /></div>
-                  <div>
-                    <label className={labelCls}>Renda Mensal</label>
-                    <input type="text" inputMode="numeric" className={inputCls + ' font-mono'} placeholder="R$ 0,00"
-                      value={formData.renda != null ? (formData.renda / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}
-                      onChange={e => {
-                        const num = e.target.value.replace(/\D/g, '');
-                        fd({ renda: num ? parseInt(num, 10) : undefined });
-                      }} />
-                  </div>
-                  <div><label className={labelCls}>Canal de Venda</label>
-                    <select className={inputCls} value={formData.canalVenda || ''} onChange={e => fd({ canalVenda: e.target.value })}>
-                      <option value="">Selecione</option><option>WhatsApp</option><option>Instagram</option><option>Indicação</option><option>Site</option><option>Presencial</option><option>Outro</option>
-                    </select>
-                  </div>
-                  <div className="col-span-2 border-t border-border pt-4 mt-2">
-                    <p className="text-xs font-black text-muted uppercase tracking-wider mb-3">Contato de Emergência</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className={labelCls}>Nome</label><input type="text" className={inputCls} value={formData.contatoEmergenciaNome || ''} onChange={e => fd({ contatoEmergenciaNome: e.target.value })} /></div>
-                      <div><label className={labelCls}>Telefone</label><input type="text" className={inputCls} value={formData.contatoEmergenciaTel || ''} onChange={e => fd({ contatoEmergenciaTel: e.target.value })} /></div>
+                formData.pessoaJuridica ? (
+                  /* ── PJ ── */
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className={labelCls}>Responsável / Contato Principal</label>
+                      <input type="text" className={inputCls} placeholder="Nome da pessoa de contato na empresa"
+                        value={formData.contatoEmergenciaNome || ''} onChange={e => fd({ contatoEmergenciaNome: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Telefone do Responsável</label>
+                      <input type="text" className={inputCls} value={formData.contatoEmergenciaTel || ''} onChange={e => fd({ contatoEmergenciaTel: e.target.value })} placeholder="(21) 99999-9999" />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Segmento / Setor</label>
+                      <input type="text" className={inputCls} placeholder="Ex: Órgão público, Turismo, Saúde..."
+                        value={formData.profissao || ''} onChange={e => fd({ profissao: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Faturamento Mensal</label>
+                      <input type="text" inputMode="numeric" className={inputCls + ' font-mono'} placeholder="R$ 0,00"
+                        value={formData.renda != null ? (formData.renda / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}
+                        onChange={e => { const n = e.target.value.replace(/\D/g,''); fd({ renda: n ? parseInt(n,10) : undefined }); }} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Canal de Venda</label>
+                      <select className={inputCls} value={formData.canalVenda || ''} onChange={e => fd({ canalVenda: e.target.value })}>
+                        <option value="">Selecione</option><option>WhatsApp</option><option>Instagram</option><option>Indicação</option><option>Site</option><option>Presencial</option><option>Outro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Data de Fundação</label>
+                      <input type="date" className={inputCls} value={formData.dataNascimento || ''} onChange={e => fd({ dataNascimento: e.target.value })} />
                     </div>
                   </div>
-                </div>
+                ) : (
+                  /* ── PF ── */
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className={labelCls}>Data de Nascimento</label><input type="date" className={inputCls} value={formData.dataNascimento || ''} onChange={e => fd({ dataNascimento: e.target.value })} /></div>
+                    <div><label className={labelCls}>Gênero</label>
+                      <select className={inputCls} value={formData.genero || ''} onChange={e => fd({ genero: e.target.value as any })}>
+                        <option value="">Não informado</option><option>Masculino</option><option>Feminino</option><option>Outro</option>
+                      </select>
+                    </div>
+                    <div><label className={labelCls}>Profissão</label><input type="text" className={inputCls} value={formData.profissao || ''} onChange={e => fd({ profissao: e.target.value })} /></div>
+                    <div>
+                      <label className={labelCls}>Renda Mensal</label>
+                      <input type="text" inputMode="numeric" className={inputCls + ' font-mono'} placeholder="R$ 0,00"
+                        value={formData.renda != null ? (formData.renda / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}
+                        onChange={e => { const n = e.target.value.replace(/\D/g,''); fd({ renda: n ? parseInt(n,10) : undefined }); }} />
+                    </div>
+                    <div><label className={labelCls}>Canal de Venda</label>
+                      <select className={inputCls} value={formData.canalVenda || ''} onChange={e => fd({ canalVenda: e.target.value })}>
+                        <option value="">Selecione</option><option>WhatsApp</option><option>Instagram</option><option>Indicação</option><option>Site</option><option>Presencial</option><option>Outro</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2 border-t border-border pt-4 mt-2">
+                      <p className="text-xs font-black text-muted uppercase tracking-wider mb-3">Contato de Emergência</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div><label className={labelCls}>Nome</label><input type="text" className={inputCls} value={formData.contatoEmergenciaNome || ''} onChange={e => fd({ contatoEmergenciaNome: e.target.value })} /></div>
+                        <div><label className={labelCls}>Telefone</label><input type="text" className={inputCls} value={formData.contatoEmergenciaTel || ''} onChange={e => fd({ contatoEmergenciaTel: e.target.value })} /></div>
+                      </div>
+                    </div>
+                  </div>
+                )
               )}
 
               {/* TAB: Endereço */}
@@ -845,8 +879,8 @@ export function Pessoas({ data, updateData }: any) {
                 </div>
               )}
 
-              {/* TAB: Família */}
-              {activeTab === 'Família' && (
+              {/* TAB: Família — oculta para PJ */}
+              {activeTab === 'Família' && !formData.pessoaJuridica && (
                 <div className="space-y-4">
                   <p className="text-xs text-muted">Vincule membros da família ou grupo de viagem. O círculo é compartilhado — quem está aqui também vê esta pessoa em seu círculo.</p>
                   {/* Search to add */}
