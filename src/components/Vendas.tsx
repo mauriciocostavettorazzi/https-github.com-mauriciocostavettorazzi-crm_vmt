@@ -1,15 +1,80 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { formatCurrency, maskCpfCnpj, generateId, parseMonetaryValue, formatMonetaryInput } from '../utils';
-import { PlusCircle, Search, Trash2, Edit, XCircle, X, Filter, ShoppingCart, BedDouble, Users, CheckSquare, Square, Shield, Paperclip } from 'lucide-react';
+import { PlusCircle, Search, Trash2, Edit, XCircle, X, Filter, ShoppingCart, BedDouble, Users, CheckSquare, Square, Shield, Paperclip, FileUp, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from '../toast';
 import { addDays } from 'date-fns';
 import { VendaOverviewModal } from './VendaOverviewModal';
 import { LeadsFunil } from './LeadsFunil';
+import { extractTextFromPdf, extractReservationData } from '../lib/extractPdf';
 import type { Lead, HospedagemItem } from '../types';
 
 export function Vendas({ data, updateData, setActiveTab }: any) {
   const [activeSection, setActiveSection] = useState<'vendas' | 'leads'>('vendas');
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setPdfLoading(true);
+    try {
+      const text = await extractTextFromPdf(file);
+      if (!text.trim()) { toast('Não foi possível extrair texto deste PDF.', 'error'); return; }
+      const dados = await extractReservationData(text);
+
+      // Preenche os campos do formulário com os dados extraídos
+      setFormData((prev: any) => ({
+        ...prev,
+        ...(dados.cliente   && { cliente: dados.cliente }),
+        ...(dados.tipo      && { tipo: dados.tipo }),
+        ...(dados.valorBruto && { valorBruto: formatMonetaryInput(String(dados.valorBruto)) }),
+        ...(dados.numeroPedido && { numeroPedido: dados.numeroPedido }),
+        ...(dados.observacoes  && { observacoes: dados.observacoes }),
+        // Se vier voo, pré-preenche o voosList
+        ...(dados.voo && {
+          incluirVoo: true,
+          voosList: [{
+            id: generateId(),
+            ciaAerea:     dados.voo.ciaAerea     || '',
+            numeroVoo:    dados.voo.numeroVoo     || '',
+            origem:       dados.voo.origem        || '',
+            destino:      dados.voo.destino       || '',
+            dataPartida:  dados.voo.dataPartida   || '',
+            dataChegada:  dados.voo.dataChegada   || '',
+            localizador:  dados.voo.localizador   || '',
+            passageiros:  dados.voo.passageiros   || '',
+            formaEmissao: dados.voo.formaEmissao  || 'Tarifa Pagante',
+            fornecedor:   '',
+          }],
+        }),
+        // Se vier hospedagem, pré-preenche
+        ...(dados.hospedagem && {
+          hospedagens: [{
+            id: generateId(),
+            nome:            dados.hospedagem.nome       || '',
+            checkIn:         dados.hospedagem.checkIn    || '',
+            checkOut:        dados.hospedagem.checkOut   || '',
+            cidade:          dados.hospedagem.cidade     || '',
+            voucher:         dados.hospedagem.voucher    || '',
+            tipoQuarto:      dados.hospedagem.tipoQuarto || '',
+            plataforma:      'Direto',
+            regimeAlimentar: 'Café da Manhã',
+            quartos:         1,
+            observacoes:     '',
+          }],
+        }),
+      }));
+
+      toast('Dados extraídos com sucesso! Revise antes de salvar.', 'info');
+      setIsFormOpen(true);
+    } catch (err: any) {
+      toast(`Erro ao processar PDF: ${err.message}`, 'error');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedOverviewVenda, setSelectedOverviewVenda] = useState<any>(null);
@@ -392,9 +457,31 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                   {editingId ? 'Editar Venda / Embarque' : 'Nova Venda / Embarque'}
                 </h3>
               </div>
-              <button onClick={() => { setIsFormOpen(false); setEditingId(null); setFormData(initForm()); }} className="p-2 hover:bg-surface-hover rounded-full transition-colors">
-                <X size={20} className="text-muted" />
-              </button>
+              <div className="flex items-center gap-3">
+                {/* Botão IA — importar PDF */}
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={handleImportPdf}
+                />
+                <button
+                  type="button"
+                  onClick={() => pdfInputRef.current?.click()}
+                  disabled={pdfLoading}
+                  title="Importar dados de um PDF de reserva via IA"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #FF2D74, #8B5CF6)', boxShadow: '0 4px 14px rgba(255,45,116,.35)' }}
+                >
+                  {pdfLoading
+                    ? <><Loader2 size={15} className="animate-spin" /> Lendo PDF...</>
+                    : <><Sparkles size={15} /> Importar PDF com IA</>}
+                </button>
+                <button onClick={() => { setIsFormOpen(false); setEditingId(null); setFormData(initForm()); }} className="p-2 hover:bg-surface-hover rounded-full transition-colors">
+                  <X size={20} className="text-muted" />
+                </button>
+              </div>
             </div>
             
             <div className="p-6 overflow-y-auto">
