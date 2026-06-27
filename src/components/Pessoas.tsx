@@ -449,8 +449,17 @@ export function Pessoas({ data, updateData }: any) {
               <th className="px-4 py-3">Nome</th>
               <th className="px-4 py-3">Tipo</th>
               <th className="px-4 py-3">Contato</th>
-              <th className="px-4 py-3">Passaporte</th>
-              <th className="px-4 py-3">Família</th>
+              {filterTipo === 'Fornecedor' ? (
+                <>
+                  <th className="px-4 py-3">Endereço</th>
+                  <th className="px-4 py-3">Segmento</th>
+                </>
+              ) : (
+                <>
+                  <th className="px-4 py-3">Passaporte</th>
+                  <th className="px-4 py-3">Família</th>
+                </>
+              )}
               <th className="px-4 py-3 text-center">Ações</th>
             </tr>
           </thead>
@@ -488,28 +497,48 @@ export function Pessoas({ data, updateData }: any) {
                     <p className="text-xs text-muted">{p.telefone || '—'}</p>
                     <p className="text-[10px] text-placeholder truncate max-w-[160px]">{p.email || ''}</p>
                   </td>
-                  <td className="px-4 py-3">
-                    {(() => {
-                      const pp = getPrimeiroPP(p);
-                      if (!pp) return <span className="text-placeholder text-xs">—</span>;
-                      return (
-                        <div>
-                          <p className="text-xs font-mono text-muted">{pp.numero}</p>
-                          <p className={`text-[10px] font-bold ${alertColor || 'text-placeholder'}`}>
-                            {pp.validade ? new Date(pp.validade + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
-                          </p>
-                          {(p.passaportes || []).length > 1 && (
-                            <p className="text-[9px] text-sky-400">+{(p.passaportes!).length - 1} mais</p>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </td>
-                  <td className="px-4 py-3">
-                    {familiaCount > 0 ? (
-                      <span className="text-xs font-bold text-sky-400 bg-sky-900/20 px-2 py-0.5 rounded-full">{familiaCount} membro{familiaCount > 1 ? 's' : ''}</span>
-                    ) : <span className="text-placeholder text-xs">—</span>}
-                  </td>
+                  {filterTipo === 'Fornecedor' ? (
+                    <>
+                      <td className="px-4 py-3">
+                        {(p.cidade || p.estado) ? (
+                          <div>
+                            <p className="text-xs text-muted">{[p.cidade, p.estado].filter(Boolean).join(' · ')}</p>
+                            {p.endereco && <p className="text-[10px] text-placeholder truncate max-w-[180px]">{p.endereco}{p.numero ? `, ${p.numero}` : ''}</p>}
+                          </div>
+                        ) : <span className="text-placeholder text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {p.profissao ? (
+                          <span className="text-xs text-muted">{p.profissao}</span>
+                        ) : <span className="text-placeholder text-xs">—</span>}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          const pp = getPrimeiroPP(p);
+                          if (!pp) return <span className="text-placeholder text-xs">—</span>;
+                          return (
+                            <div>
+                              <p className="text-xs font-mono text-muted">{pp.numero}</p>
+                              <p className={`text-[10px] font-bold ${alertColor || 'text-placeholder'}`}>
+                                {pp.validade ? new Date(pp.validade + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
+                              </p>
+                              {(p.passaportes || []).length > 1 && (
+                                <p className="text-[9px] text-sky-400">+{(p.passaportes!).length - 1} mais</p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-4 py-3">
+                        {familiaCount > 0 ? (
+                          <span className="text-xs font-bold text-sky-400 bg-sky-900/20 px-2 py-0.5 rounded-full">{familiaCount} membro{familiaCount > 1 ? 's' : ''}</span>
+                        ) : <span className="text-placeholder text-xs">—</span>}
+                      </td>
+                    </>
+                  )}
                   <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-2">
                       <button onClick={() => openEdit(p)} className="bg-blue-900/30 text-blue-400 p-1.5 rounded hover:bg-blue-900/50" title="Editar">
