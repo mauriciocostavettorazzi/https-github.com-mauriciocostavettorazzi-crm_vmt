@@ -1,155 +1,169 @@
 import React, { useState, useMemo } from 'react';
 import { formatCurrency, isCheckinLiberado, getCheckinUrl, calculateStatusAtrasado } from '../utils';
-import { Plane, TrendingUp, DollarSign, AlertCircle, Filter, CalendarDays, BarChart as BarChartIcon, PieChart as PieChartIcon, AlertTriangle, Gift, FileWarning, CheckSquare, Users, FileText } from 'lucide-react';
-import { isWithinInterval, addDays, isPast, subDays } from 'date-fns';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
+import { Plane, TrendingUp, DollarSign, AlertTriangle, Gift, FileWarning, CheckSquare, Users, FileText, ArrowDownCircle, ArrowUpCircle, Wallet, ExternalLink } from 'lucide-react';
+import { isWithinInterval, addDays, subDays } from 'date-fns';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 
+// ── cores de marca ──────────────────────────────────────────────────────────
+const C = {
+  magenta: '#FF2D74',
+  cyan:    '#25C2F2',
+  orange:  '#FF9F2E',
+  teal:    '#1FBE93',
+  amber:   '#FBBF24',
+  red:     '#FF5A6E',
+};
+const PIE_COLORS = [C.magenta, C.cyan, C.orange, C.teal, C.amber, C.red, '#8B5CF6'];
+
+// ── Card KPI ────────────────────────────────────────────────────────────────
+function KpiCard({ label, value, sub, subColor, icon: Icon, iconBg }: any) {
+  return (
+    <div
+      className="rounded-[18px] p-5 flex flex-col gap-3"
+      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div
+          className="w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0"
+          style={{ background: iconBg }}
+        >
+          <Icon size={18} style={{ color: '#fff' }} />
+        </div>
+        {sub && (
+          <span
+            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: `${subColor}22`, color: subColor, border: `1px solid ${subColor}44` }}
+          >
+            {sub}
+          </span>
+        )}
+      </div>
+      <div>
+        <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{label}</p>
+        <p className="font-display font-bold text-[27px] leading-tight" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Segmented control ────────────────────────────────────────────────────────
+function Segmented({ options, value, onChange }: { options: { label: string; value: string }[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div
+      className="flex rounded-xl p-1 gap-1"
+      style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border-color)' }}
+    >
+      {options.map(o => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          style={{
+            background: value === o.value ? C.magenta : 'transparent',
+            color: value === o.value ? '#fff' : 'var(--text-muted)',
+            boxShadow: value === o.value ? `0 4px 12px ${C.magenta}44` : 'none',
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Componente principal ─────────────────────────────────────────────────────
 export function Dashboard({ data }: any) {
-  const [periodo, setPeriodo] = useState('tudo'); // 'tudo', 'hoje', 'mes', 'ano', 'personalizado'
+  const [periodo, setPeriodo] = useState('mes');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
 
   const filterByDate = (dateStr: string) => {
     if (!dateStr) return false;
-    const itemDate = new Date(dateStr);
+    const d = new Date(dateStr);
     const now = new Date();
-    
     if (periodo === 'tudo') return true;
-    if (periodo === 'hoje') {
-      return itemDate.toDateString() === now.toDateString();
-    }
-    if (periodo === 'mes') {
-      return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
-    }
-    if (periodo === 'ano') {
-      return itemDate.getFullYear() === now.getFullYear();
-    }
+    if (periodo === 'mes') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if (periodo === 'ano') return d.getFullYear() === now.getFullYear();
     if (periodo === 'personalizado') {
-      const start = dataInicio ? new Date(dataInicio + 'T00:00:00') : new Date(0);
-      const end = dataFim ? new Date(dataFim + 'T23:59:59') : new Date(8640000000000000);
-      return itemDate >= start && itemDate <= end;
+      const s = dataInicio ? new Date(dataInicio + 'T00:00:00') : new Date(0);
+      const e = dataFim   ? new Date(dataFim   + 'T23:59:59') : new Date(8640000000000000);
+      return d >= s && d <= e;
     }
     return true;
   };
 
-  // Metricas
+  // ── Métricas ──────────────────────────────────────────────────────────────
   const vendasFiltradas = data.vendas.filter((v: any) => v.status !== 'Cancelado' && filterByDate(v.criadoEm));
-  const valorVendas = vendasFiltradas.reduce((acc: number, v: any) => acc + (v.valorBruto || 0), 0);
-  const lucroBruto = vendasFiltradas.reduce((acc: number, v: any) => acc + (Number(v.comissao) || 0), 0);
-  
+  const valorVendas  = vendasFiltradas.reduce((a: number, v: any) => a + (v.valorBruto || 0), 0);
+  const lucroBruto   = vendasFiltradas.reduce((a: number, v: any) => a + (Number(v.comissao) || 0), 0);
+
   const receberPendente = data.contasReceber.filter((c: any) => {
-     const statusInfo = calculateStatusAtrasado(c.vencimento, c.status);
-     return (['Em dia', 'Pgto do dia', 'Atrasado'].includes(statusInfo)) && filterByDate(c.vencimento);
+    const s = calculateStatusAtrasado(c.vencimento, c.status);
+    return ['Em dia', 'Pgto do dia', 'Atrasado'].includes(s) && filterByDate(c.vencimento);
   });
-  const valorReceber = receberPendente.reduce((acc: number, v: any) => acc + v.valor, 0);
+  const valorReceber = receberPendente.reduce((a: number, v: any) => a + v.valor, 0);
 
   const pagarPendente = data.contasPagar.filter((c: any) => {
-     const statusInfo = calculateStatusAtrasado(c.vencimento, c.status);
-     return (['Em dia', 'Pgto do dia', 'Atrasado'].includes(statusInfo)) && filterByDate(c.vencimento);
+    const s = calculateStatusAtrasado(c.vencimento, c.status);
+    return ['Em dia', 'Pgto do dia', 'Atrasado'].includes(s) && filterByDate(c.vencimento);
   });
-  const valorPagar = pagarPendente.reduce((acc: number, v: any) => acc + v.valor, 0);
+  const valorPagar = pagarPendente.reduce((a: number, v: any) => a + v.valor, 0);
 
-  const voosFiltrados = data.voos.filter((v: any) => filterByDate(v.dataPartida) && v.status === 'Emitido');
-
-  const now = new Date();
-  const next7Days = addDays(now, 7);
-  
-  const contasProximasRaw = data.contasPagar.filter((c: any) => {
-       const statusInfo = calculateStatusAtrasado(c.vencimento, c.status);
-       return ['Em dia', 'Pgto do dia', 'Atrasado'].includes(statusInfo);
-    }).map((c: any) => ({ ...c, tipo: 'Pagar' })).concat(
-    data.contasReceber.filter((c: any) => {
-       const statusInfo = calculateStatusAtrasado(c.vencimento, c.status);
-       return ['Em dia', 'Pgto do dia', 'Atrasado'].includes(statusInfo);
-    }).map((c: any) => ({ ...c, tipo: 'Receber' }))
-  );
-
-  const contasProximas = contasProximasRaw.filter((c: any) => {
-    const vd = new Date(c.vencimento);
-    return isWithinInterval(vd, { start: subDays(now, 30), end: next7Days });
-  }).sort((a: any, b: any) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime());
-
-  // Proximos voos globais idenpendente do filtro local
-  const proximosVoos = data.voos
-    .filter((v: any) => v.status === 'Emitido' && new Date(v.dataPartida) > subDays(now, 1))
-    .sort((a: any, b: any) => new Date(a.dataPartida).getTime() - new Date(b.dataPartida).getTime())
-    .slice(0, 10); // View top 10
-
-  const getPeriodLabel = () => {
-     if(periodo === 'tudo') return 'Período: Todo o Histórico';
-     if(periodo === 'hoje') return 'Hoje';
-     if(periodo === 'mes') return 'Este Mês';
-     if(periodo === 'ano') return 'Este Ano';
-     if(periodo === 'personalizado') return 'Personalizado';
-     return '';
-  };
-
-  const proximosAPagar7Dias = data.contasPagar.filter((c: any) => {
-    const statusInfo = calculateStatusAtrasado(c.vencimento, c.status);
-    if (!['Em dia', 'Pgto do dia'].includes(statusInfo)) return false;
-    const vd = new Date(c.vencimento);
-    const start = new Date(now);
-    start.setHours(0,0,0,0);
-    const end = new Date(next7Days);
-    end.setHours(23,59,59,999);
-    return vd >= start && vd <= end;
-  }).sort((a: any, b: any) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime()).slice(0, 5);
-
-  // ----- ALERTAS -----
-  const alertas = useMemo(() => {
-    const items: { tipo: 'error'|'warn'|'info'; label: string; sub: string }[] = [];
-    const hoje = new Date();
-    // Passaportes
-    (data.pessoas || []).forEach((p: any) => {
-      if (!p.passaporteValidade) return;
-      const d = new Date(p.passaporteValidade + 'T12:00:00');
-      const diff = Math.ceil((d.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-      if (diff < 0) items.push({ tipo: 'error', label: `Passaporte VENCIDO — ${p.nome}`, sub: `Venceu em ${d.toLocaleDateString('pt-BR')}` });
-      else if (diff <= 180) items.push({ tipo: 'warn', label: `Passaporte vence em ${diff} dias — ${p.nome}`, sub: `Válido até ${d.toLocaleDateString('pt-BR')}` });
-    });
-    // Vistos
-    (data.pessoas || []).forEach((p: any) => {
-      if (!p.vistoValidade) return;
-      const d = new Date(p.vistoValidade + 'T12:00:00');
-      const diff = Math.ceil((d.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-      if (diff < 0) items.push({ tipo: 'error', label: `Visto VENCIDO — ${p.nome}`, sub: `Venceu em ${d.toLocaleDateString('pt-BR')}` });
-      else if (diff <= 60) items.push({ tipo: 'warn', label: `Visto vence em ${diff} dias — ${p.nome}`, sub: `Válido até ${d.toLocaleDateString('pt-BR')}` });
-    });
-    // Aniversários hoje / próx 3 dias
-    (data.pessoas || []).forEach((p: any) => {
-      if (!p.dataNascimento) return;
-      const d = new Date(p.dataNascimento + 'T12:00:00');
-      const thisYear = new Date(hoje.getFullYear(), d.getMonth(), d.getDate());
-      const diff = Math.ceil((thisYear.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-      if (diff === 0) items.push({ tipo: 'info', label: `🎂 Aniversário hoje — ${p.nome}`, sub: `Não esqueça de parabenizar!` });
-      else if (diff > 0 && diff <= 3) items.push({ tipo: 'info', label: `🎂 Aniversário em ${diff} dias — ${p.nome}`, sub: d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }) });
-    });
-    // Tarefas vencidas
-    let tarefasVencidas = 0;
-    (data.vendas || []).forEach((v: any) => {
-      (v.tarefas || []).filter((t: any) => !t.feita && t.prazo && new Date(t.prazo) < hoje).forEach(() => tarefasVencidas++);
-    });
-    if (tarefasVencidas > 0) items.push({ tipo: 'error', label: `${tarefasVencidas} tarefa(s) vencida(s) em vendas`, sub: 'Acesse Vendas e verifique o checklist.' });
-    // Contas vencidas
-    const contasVencidasP = (data.contasPagar || []).filter((c: any) => c.status === 'Atrasado').length;
-    const contasVencidasR = (data.contasReceber || []).filter((c: any) => calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado').length;
-    if (contasVencidasP > 0) items.push({ tipo: 'error', label: `${contasVencidasP} conta(s) a pagar em atraso`, sub: 'Verifique A Pagar.' });
-    if (contasVencidasR > 0) items.push({ tipo: 'error', label: `${contasVencidasR} conta(s) a receber em atraso`, sub: 'Verifique A Receber.' });
-    return items;
-  }, [data]);
-
-  // Novos KPIs
+  const saldo = valorReceber - valorPagar;
   const ticketMedio = vendasFiltradas.length > 0 ? valorVendas / vendasFiltradas.length : 0;
   const totalLeads = (data.leads || []).length;
   const leadsConvertidos = (data.leads || []).filter((l: any) => l.stage === 'fechado').length;
   const taxaConversao = totalLeads > 0 ? Math.round((leadsConvertidos / totalLeads) * 100) : 0;
-  const topClientes = useMemo(() => {
-    const map: Record<string, number> = {};
-    (data.vendas || []).filter((v: any) => v.status !== 'Cancelado').forEach((v: any) => {
-      map[v.cliente] = (map[v.cliente] || 0) + (v.valorBruto || 0);
+
+  const now = new Date();
+  const next7Days = addDays(now, 7);
+
+  // Próximos voos
+  const proximosVoos = data.voos
+    .filter((v: any) => v.status === 'Emitido' && new Date(v.dataPartida) > subDays(now, 1))
+    .sort((a: any, b: any) => new Date(a.dataPartida).getTime() - new Date(b.dataPartida).getTime())
+    .slice(0, 10);
+
+  // Alertas
+  const alertas = useMemo(() => {
+    const items: { tipo: 'error' | 'warn' | 'info'; label: string; sub: string }[] = [];
+    const hoje = new Date();
+    (data.pessoas || []).forEach((p: any) => {
+      if (p.passaporteValidade) {
+        const d = new Date(p.passaporteValidade + 'T12:00:00');
+        const diff = Math.ceil((d.getTime() - hoje.getTime()) / 86400000);
+        if (diff < 0) items.push({ tipo: 'error', label: `Passaporte VENCIDO — ${p.nome}`, sub: `Venceu em ${d.toLocaleDateString('pt-BR')}` });
+        else if (diff <= 180) items.push({ tipo: 'warn', label: `Passaporte vence em ${diff}d — ${p.nome}`, sub: `Válido até ${d.toLocaleDateString('pt-BR')}` });
+      }
+      if (p.vistoValidade) {
+        const d = new Date(p.vistoValidade + 'T12:00:00');
+        const diff = Math.ceil((d.getTime() - hoje.getTime()) / 86400000);
+        if (diff < 0) items.push({ tipo: 'error', label: `Visto VENCIDO — ${p.nome}`, sub: `Venceu em ${d.toLocaleDateString('pt-BR')}` });
+        else if (diff <= 60) items.push({ tipo: 'warn', label: `Visto vence em ${diff}d — ${p.nome}`, sub: `Válido até ${d.toLocaleDateString('pt-BR')}` });
+      }
+      if (p.dataNascimento) {
+        const d = new Date(p.dataNascimento + 'T12:00:00');
+        const thisYear = new Date(hoje.getFullYear(), d.getMonth(), d.getDate());
+        const diff = Math.ceil((thisYear.getTime() - hoje.getTime()) / 86400000);
+        if (diff === 0) items.push({ tipo: 'info', label: `Aniversário hoje — ${p.nome}`, sub: 'Não esqueça de parabenizar!' });
+        else if (diff > 0 && diff <= 3) items.push({ tipo: 'info', label: `Aniversário em ${diff}d — ${p.nome}`, sub: d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }) });
+      }
     });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [data.vendas]);
+    let tarefasVencidas = 0;
+    (data.vendas || []).forEach((v: any) => {
+      (v.tarefas || []).filter((t: any) => !t.feita && t.prazo && new Date(t.prazo) < hoje).forEach(() => tarefasVencidas++);
+    });
+    if (tarefasVencidas > 0) items.push({ tipo: 'error', label: `${tarefasVencidas} tarefa(s) vencida(s)`, sub: 'Verifique o checklist nas vendas.' });
+    const atrasadosP = (data.contasPagar  || []).filter((c: any) => c.status === 'Atrasado').length;
+    const atrasadosR = (data.contasReceber || []).filter((c: any) => calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado').length;
+    if (atrasadosP > 0) items.push({ tipo: 'error', label: `${atrasadosP} conta(s) a pagar em atraso`, sub: 'Verifique A Pagar.' });
+    if (atrasadosR > 0) items.push({ tipo: 'error', label: `${atrasadosR} conta(s) a receber em atraso`, sub: 'Verifique A Receber.' });
+    return items;
+  }, [data]);
+
+  // Top destinos
   const topDestinos = useMemo(() => {
     const map: Record<string, number> = {};
     (data.voos || []).filter((v: any) => v.status !== 'Cancelado').forEach((v: any) => {
@@ -159,415 +173,332 @@ export function Dashboard({ data }: any) {
       map[c.destino] = (map[c.destino] || 0) + 1;
     });
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [data.voos, data.cotacoes]);
+  }, [data]);
+  const maxDestino = topDestinos[0]?.[1] || 1;
 
-  // ----- CHARTS DATA -----
-
-  // Sales by type
-  const vendasPorTipo = useMemo(() => {
-    const counts: Record<string, number> = {};
-    vendasFiltradas.forEach((v: any) => {
-      counts[v.tipo] = (counts[v.tipo] || 0) + 1;
-    });
-    return Object.keys(counts).map(k => ({ name: k, value: counts[k] })).sort((a,b) => b.value - a.value);
-  }, [vendasFiltradas]);
-  const COLORS = ['#3B82F6', '#1D9E75', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
-
-  // Monthly revenue for the last 6 months
+  // Gráfico mensal
   const monthlyData = useMemo(() => {
-      const mData = [];
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const y = d.getFullYear();
-        const m = d.getMonth();
-        
-        let vendasMes = data.vendas.filter((v:any) => v.status !== 'Cancelado' && new Date(v.criadoEm).getMonth() === m && new Date(v.criadoEm).getFullYear() === y);
-        let valorV = vendasMes.reduce((acc:any, v:any) => acc + (v.valorBruto || 0), 0);
-        let lucroV = vendasMes.reduce((acc:any, v:any) => acc + (Number(v.comissao) || 0), 0);
-
-        mData.push({
-           name: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-           Vendas: valorV,
-           Lucro: lucroV
-        });
-      }
-      return mData;
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - i));
+      const y = d.getFullYear(), m = d.getMonth();
+      const mes = data.vendas.filter((v: any) => v.status !== 'Cancelado' && new Date(v.criadoEm).getMonth() === m && new Date(v.criadoEm).getFullYear() === y);
+      return {
+        name: d.toLocaleDateString('pt-BR', { month: 'short' }),
+        Vendas: mes.reduce((a: number, v: any) => a + (v.valorBruto || 0), 0),
+        Lucro:  mes.reduce((a: number, v: any) => a + (Number(v.comissao) || 0), 0),
+      };
+    });
   }, [data.vendas]);
 
-  // Contas by Category
-  const despesasPorCategoria = useMemo(() => {
-    const contasP = data.contasPagar.filter((c:any) => filterByDate(c.vencimento) && c.status !== 'Cancelado');
-    const counts: Record<string, number> = {};
-    contasP.forEach((c: any) => {
-      counts[c.categoria] = (counts[c.categoria] || 0) + c.valor;
-    });
-    return Object.keys(counts).map(k => ({ name: k, value: counts[k] })).sort((a,b) => b.value - a.value).slice(0, 5);
-  }, [data.contasPagar, filterByDate]);
+  // Donut por tipo
+  const vendasPorTipo = useMemo(() => {
+    const m: Record<string, number> = {};
+    vendasFiltradas.forEach((v: any) => { m[v.tipo] = (m[v.tipo] || 0) + 1; });
+    return Object.entries(m).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [vendasFiltradas]);
+
+  // Contas próximas
+  const contasProximas = useMemo(() => {
+    const raw = [
+      ...data.contasPagar.filter((c: any) => ['Em dia', 'Pgto do dia', 'Atrasado'].includes(calculateStatusAtrasado(c.vencimento, c.status))).map((c: any) => ({ ...c, tipo: 'Pagar' })),
+      ...data.contasReceber.filter((c: any) => ['Em dia', 'Pgto do dia', 'Atrasado'].includes(calculateStatusAtrasado(c.vencimento, c.status))).map((c: any) => ({ ...c, tipo: 'Receber' })),
+    ];
+    return raw.filter((c: any) => isWithinInterval(new Date(c.vencimento), { start: subDays(now, 30), end: next7Days }))
+      .sort((a: any, b: any) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime());
+  }, [data]);
+
+  const PERIODO_OPT = [
+    { label: 'Mês', value: 'mes' },
+    { label: 'Ano', value: 'ano' },
+    { label: 'Tudo', value: 'tudo' },
+    { label: 'Personalizado', value: 'personalizado' },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Filters Header */}
-      <div className="bg-surface p-4 rounded-2xl shadow-sm border border-border flex flex-col md:flex-row gap-4 items-center justify-between">
-         <div className="flex items-center gap-2 text-primary font-bold">
-            <Filter size={18} className="text-primary"/> 
-            <span className="uppercase tracking-widest">Painel Geral</span>
-         </div>
 
-         <div className="flex flex-wrap items-center gap-3">
-            <select 
-              value={periodo} 
-              onChange={(e) => setPeriodo(e.target.value)}
-              className="border border-border rounded-lg px-3 py-2 text-sm font-medium text-primary outline-none focus:border-[#1D9E75] cursor-pointer bg-surface-alt"
-            >
-              <option value="tudo">Todo o Histórico</option>
-              <option value="hoje">Hoje</option>
-              <option value="mes">Este Mês (Faturamento)</option>
-              <option value="ano">Este Ano (Faturamento)</option>
-              <option value="personalizado">Período Personalizado</option>
-            </select>
-            {periodo === 'personalizado' && (
-              <div className="flex items-center gap-2 bg-surface-alt p-1 border border-border rounded-lg">
-                 <input 
-                   type="date" 
-                   value={dataInicio}
-                   onChange={(e) => setDataInicio(e.target.value)}
-                   className="bg-transparent px-2 py-1 text-sm outline-none font-mono text-muted"
-                 />
-                 <span className="text-placeholder font-bold">-</span>
-                 <input 
-                   type="date" 
-                   value={dataFim}
-                   onChange={(e) => setDataFim(e.target.value)}
-                   className="bg-transparent px-2 py-1 text-sm outline-none font-mono text-muted"
-                 />
-              </div>
-            )}
-         </div>
+      {/* ── Saudação + período ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="font-display font-bold text-[25px] text-[color:var(--text-primary)]" style={{ letterSpacing: '-0.02em' }}>
+            Bom dia, Volta ao Mundo 👋
+          </h2>
+          <p className="text-sm text-[color:var(--text-muted)] mt-0.5">Aqui está o resumo da sua agência.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Segmented options={PERIODO_OPT} value={periodo} onChange={setPeriodo} />
+          {periodo === 'personalizado' && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs" style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border-color)' }}>
+              <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="bg-transparent outline-none text-xs font-mono text-[color:var(--text-muted)]" />
+              <span className="text-[color:var(--text-faint)]">–</span>
+              <input type="date" value={dataFim}   onChange={e => setDataFim(e.target.value)}   className="bg-transparent outline-none text-xs font-mono text-[color:var(--text-muted)]" />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ── Painel de Alertas ── */}
+      {/* ── Alertas ── */}
       {alertas.length > 0 && (
-        <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-          <div className="px-5 py-3 bg-red-900/20 border-b border-red-900/40 flex items-center gap-2">
-            <AlertTriangle size={16} className="text-red-400" />
-            <h4 className="text-xs font-black uppercase tracking-widest text-red-400">Alertas ({alertas.length})</h4>
+        <div className="rounded-[18px] overflow-hidden" style={{ border: '1px solid rgba(255,90,110,.25)', background: 'rgba(255,90,110,.06)' }}>
+          <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: '1px solid rgba(255,90,110,.2)' }}>
+            <AlertTriangle size={15} style={{ color: C.red }} />
+            <span className="text-xs font-bold" style={{ color: C.red }}>Alertas ({alertas.length})</span>
           </div>
-          <div className="divide-y divide-border max-h-52 overflow-y-auto">
-            {alertas.map((a, i) => (
-              <div key={i} className={`flex items-start gap-3 px-5 py-3 ${a.tipo === 'error' ? 'bg-red-900/10' : a.tipo === 'warn' ? 'bg-amber-900/10' : 'bg-sky-900/10'}`}>
-                <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${a.tipo === 'error' ? 'bg-red-400' : a.tipo === 'warn' ? 'bg-amber-400' : 'bg-sky-400'}`} />
-                <div>
-                  <p className={`text-sm font-bold ${a.tipo === 'error' ? 'text-red-400' : a.tipo === 'warn' ? 'text-amber-400' : 'text-sky-400'}`}>{a.label}</p>
-                  <p className="text-xs text-muted">{a.sub}</p>
+          <div className="divide-y" style={{ '--tw-divide-opacity': 1 } as any}>
+            {alertas.map((a, i) => {
+              const dot = a.tipo === 'error' ? C.red : a.tipo === 'warn' ? C.amber : C.cyan;
+              return (
+                <div key={i} className="flex items-start gap-3 px-5 py-3">
+                  <span className="w-2 h-2 rounded-full mt-1 shrink-0" style={{ background: dot }} />
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{a.label}</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{a.sub}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-        <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-[#1D9E75] hover:shadow-md transition-shadow">
-          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-muted mb-1">Total Vendido</h4>
-          <h3 className="text-2xl font-black text-primary truncate">{formatCurrency(valorVendas)}</h3>
-          <p className="text-[10px] bg-blue-900/30 text-blue-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">{vendasFiltradas.length} Vendas</p>
-        </div>
-
-        <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-emerald-500 hover:shadow-md transition-shadow">
-          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-muted mb-1">Lucro Estimado</h4>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-black text-emerald-400 truncate">{formatCurrency(lucroBruto)}</h3>
-          </div>
-          <p className="text-[10px] bg-emerald-900/30 text-emerald-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">
-             Margem: {valorVendas > 0 ? ((lucroBruto / valorVendas) * 100).toFixed(1) : '0'}%
-          </p>
-        </div>
-        
-        <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-amber-500 hover:shadow-md transition-shadow">
-          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-muted mb-1">A Receber</h4>
-          <h3 className="text-2xl font-black text-primary truncate">{formatCurrency(valorReceber)}</h3>
-          <p className="text-[10px] bg-amber-900/30 text-amber-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">{receberPendente.length} Títulos Pendentes</p>
-        </div>
-
-        <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-red-500 hover:shadow-md transition-shadow">
-          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-muted mb-1">A Pagar</h4>
-          <h3 className="text-2xl font-black text-primary truncate">{formatCurrency(valorPagar)}</h3>
-          <p className="text-[10px] bg-red-900/30 text-red-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">{pagarPendente.length} Títulos Pendentes</p>
-        </div>
-
-        <div className="bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 border-l-sky-500 hover:shadow-md transition-shadow">
-          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-muted mb-1">Tks / Voos Emitidos</h4>
-          <h3 className="text-2xl font-black text-primary truncate">{voosFiltrados.length}</h3>
-          <p className="text-[10px] bg-sky-900/30 text-sky-400 inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase">Passageiros no ar</p>
-        </div>
-
-        <div className={`bg-surface p-5 rounded-xl shadow-sm border border-border border-l-4 hover:shadow-md transition-shadow ${valorReceber - valorPagar >= 0 ? 'border-l-emerald-400' : 'border-l-red-500'}`}>
-          <p className="text-[10px] font-bold text-placeholder uppercase tracking-widest mb-1">{getPeriodLabel()}</p>
-          <h4 className="text-xs font-black uppercase text-muted mb-1">Saldo Líquido</h4>
-          <h3 className={`text-2xl font-black truncate ${valorReceber - valorPagar >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{formatCurrency(valorReceber - valorPagar)}</h3>
-          <p className={`text-[10px] inline-block px-1.5 py-0.5 mt-2 rounded font-bold uppercase ${valorReceber - valorPagar >= 0 ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'}`}>
-            A Receber − A Pagar
-          </p>
-        </div>
+      {/* ── 4 KPIs primários ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard label="Total Vendido"  value={formatCurrency(valorVendas)} sub={`${vendasFiltradas.length} vendas`} subColor={C.cyan}    icon={TrendingUp}      iconBg={`${C.cyan}33`} />
+        <KpiCard label="Lucro Estimado" value={formatCurrency(lucroBruto)}  sub={`${valorVendas > 0 ? ((lucroBruto/valorVendas)*100).toFixed(1) : 0}% margem`} subColor={C.teal} icon={DollarSign} iconBg={`${C.teal}33`} />
+        <KpiCard label="A Receber"      value={formatCurrency(valorReceber)} sub={`${receberPendente.length} títulos`} subColor={C.amber}  icon={ArrowDownCircle} iconBg={`${C.amber}33`} />
+        <KpiCard label="A Pagar"        value={formatCurrency(valorPagar)}   sub={`${pagarPendente.length} títulos`}  subColor={C.red}    icon={ArrowUpCircle}   iconBg={`${C.red}33`} />
       </div>
 
-      {/* ── Novos KPIs ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-surface border border-border border-b-4 border-b-purple-500 rounded-xl p-4">
-          <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider">Ticket Médio</p>
-          <p className="text-2xl font-black text-purple-400 mt-1">{formatCurrency(ticketMedio)}</p>
-          <p className="text-[10px] text-muted mt-1">por venda no período</p>
-        </div>
-        <div className="bg-surface border border-border border-b-4 border-b-teal-500 rounded-xl p-4">
-          <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider">Conversão Lead→Venda</p>
-          <p className="text-2xl font-black text-teal-400 mt-1">{taxaConversao}%</p>
-          <p className="text-[10px] text-muted mt-1">{leadsConvertidos}/{totalLeads} leads fechados</p>
-        </div>
-        <div className="bg-surface border border-border rounded-xl p-4">
-          <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider flex items-center gap-1 mb-2"><Users size={10}/> Top Clientes</p>
-          {topClientes.length === 0 ? <p className="text-xs text-muted">—</p> : topClientes.map(([nome, val], i) => (
-            <div key={nome} className="flex items-center justify-between text-xs py-0.5">
-              <span className="text-muted truncate max-w-[100px]"><span className="text-placeholder mr-1">{i+1}.</span>{nome}</span>
-              <span className="font-bold text-[#1D9E75]">{formatCurrency(val)}</span>
-            </div>
-          ))}
-        </div>
-        <div className="bg-surface border border-border rounded-xl p-4">
-          <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider flex items-center gap-1 mb-2"><FileText size={10}/> Top Destinos</p>
-          {topDestinos.length === 0 ? <p className="text-xs text-muted">—</p> : topDestinos.map(([dest, cnt], i) => (
-            <div key={dest} className="flex items-center justify-between text-xs py-0.5">
-              <span className="text-muted truncate max-w-[100px]"><span className="text-placeholder mr-1">{i+1}.</span>{dest}</span>
-              <span className="font-bold text-sky-400">{cnt}x</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ── Grid principal 2 colunas ── */}
+      <div className="grid gap-5" style={{ gridTemplateColumns: '1.85fr 1fr' }}>
 
-      {/* Próximos Voos (Top Priority) */}
-      <div className="bg-surface rounded-2xl shadow-sm border border-border flex flex-col mb-6">
-          <div className="p-4 bg-surface-alt border-b border-border flex justify-between items-center rounded-t-2xl">
-            <h4 className="font-black text-white uppercase tracking-wider flex items-center gap-2"><Plane size={18} className="text-sky-500"/> Próximos Voos / Embarques</h4>
-            <span className="bg-blue-900/50 text-blue-300 text-[10px] px-2 py-1 rounded-full font-black uppercase">Tempo Real / Curto Prazo</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-surface-alt text-[10px] uppercase font-bold text-placeholder">
-                <tr>
-                  <th className="px-4 py-3">Passageiro / Voo</th>
-                  <th className="px-4 py-3">Trecho</th>
-                  <th className="px-4 py-3">Embarque / Check-in</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm border-t border-border">
-                {proximosVoos.length === 0 ? <tr><td colSpan={3} className="p-4 text-center text-sm text-muted font-medium bg-surface">Nenhum voo programado nos próximos dias.</td></tr> : null}
-                {proximosVoos.map((voo: any) => {
-                  const is24h = new Date(voo.dataPartida).getTime() - now.getTime() < 24 * 60 * 60 * 1000;
-                  const is48h = new Date(voo.dataPartida).getTime() - now.getTime() < 48 * 60 * 60 * 1000 && !is24h;
-                  
-                  return (
-                    <tr key={voo.id} className={`border-b border-border hover:bg-surface-alt transition-colors ${is24h ? 'bg-red-900/30/50' : is48h ? 'bg-amber-900/30/50' : 'bg-surface'}`}>
-                      <td className="px-4 py-3">
-                        <div className="font-black text-primary uppercase text-xs truncate max-w-[300px]" title={voo.passageiros}>{voo.passageiros}</div>
-                        <div className="text-[10px] text-muted font-mono mt-1 bg-surface-alt inline-block px-1 rounded">{voo.ciaAerea} {voo.numeroVoo} • LOC: {voo.localizador || 'S/ Loc'}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center space-x-1 font-bold uppercase">
-                          <span className="bg-slate-800 text-white px-1.5 py-0.5 rounded text-[10px] tracking-wider">{voo.origem?.toUpperCase()}</span>
-                          <span className="text-secondary">→</span>
-                          <span className="bg-slate-800 text-white px-1.5 py-0.5 rounded text-[10px] tracking-wider">{voo.destino?.toUpperCase()}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className={`text-[11px] font-black uppercase ${is24h ? 'text-red-400' : 'text-white'}`}>
-                              {new Date(voo.dataPartida).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' })}
-                            </div>
-                            <div className={`text-[9px] uppercase mt-0.5 ${is24h ? 'text-red-400 font-bold' : is48h ? 'text-yellow-600 font-bold' : 'text-placeholder'}`}>
-                              Checkin: {voo.checkInDisponivel ? new Date(voo.checkInDisponivel).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' }) : 'N/D'}
-                            </div>
-                          </div>
-                          {voo.ciaAerea === 'Azul' || voo.ciaAerea === 'GOL' || voo.ciaAerea === 'LATAM' ? (
-                            (() => {
-                               const isLiberado = isCheckinLiberado(voo.dataPartida);
-                               if (isLiberado && getCheckinUrl(voo.ciaAerea, voo.localizador) !== '#') {
-                                 return (
-                                   <a href={getCheckinUrl(voo.ciaAerea, voo.localizador)} 
-                                      target="_blank" rel="noreferrer"
-                                      className="ml-2 px-2 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 uppercase tracking-widest text-[9px] font-black rounded shadow-sm whitespace-nowrap transition-colors">
-                                     Emitir Check-in
-                                   </a>
-                                 );
-                               } else {
-                                 return (
-                                   <button disabled
-                                      title="Check-in não liberado ou Localizador ausente"
-                                      className="ml-2 px-2 py-1.5 bg-surface-alt text-placeholder cursor-not-allowed uppercase tracking-widest text-[9px] font-bold rounded shadow-sm whitespace-nowrap">
-                                     Pendente
-                                   </button>
-                                 );
-                               }
-                            })()
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-      </div>
+        {/* ESQUERDA */}
+        <div className="space-y-5 min-w-0">
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Graph 1: Receitas e Lucro (Ultimos 6 meses) */}
-        <div className="lg:col-span-2 bg-surface rounded-2xl shadow-sm border border-border p-5 flex flex-col min-h-[350px]">
-           <div className="flex items-center gap-2 mb-6">
-              <BarChartIcon size={18} className="text-primary" />
-              <h4 className="font-black text-primary uppercase tracking-wider text-sm">Faturamento e Margem (Últimos 6 Meses)</h4>
-           </div>
-           <div className="flex-1 w-full h-full min-h-[250px]">
+          {/* Gráfico faturamento */}
+          <div className="rounded-[18px] p-5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+            <p className="font-display font-bold text-[15px] text-[color:var(--text-primary)] mb-4">Faturamento & Lucro — últimos 6 meses</p>
+            <div style={{ height: 240 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthlyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <AreaChart data={monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="colorVendas" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                    <linearGradient id="gVendas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor={C.cyan}    stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={C.cyan}    stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="colorLucro" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                    <linearGradient id="gLucro" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor={C.magenta} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={C.magenta} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-muted)' }} dy={10} />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 12, fill: 'var(--color-muted)' }}
-                    tickFormatter={(val) => `R$${(val/1000).toFixed(0)}k`}
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--text-placeholder)', fontFamily: 'Manrope' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--text-placeholder)', fontFamily: 'Manrope' }} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} width={55} />
+                  <RechartsTooltip
+                    formatter={(v: number) => formatCurrency(v)}
+                    contentStyle={{ borderRadius: 12, border: '1px solid var(--border-color)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'Manrope' }}
                   />
-                  <RechartsTooltip 
-                     formatter={(value: number) => formatCurrency(value)}
-                     contentStyle={{ borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-primary)' }}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold', color: 'var(--color-primary)' }} />
-                  <Area type="monotone" dataKey="Vendas" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorVendas)" />
-                  <Area type="monotone" dataKey="Lucro" stroke="#1D9E75" strokeWidth={3} fillOpacity={1} fill="url(#colorLucro)" />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12, fontFamily: 'Manrope', color: 'var(--text-muted)', paddingTop: 12 }} />
+                  <Area type="monotone" dataKey="Vendas" stroke={C.cyan}    strokeWidth={2.5} fill="url(#gVendas)" />
+                  <Area type="monotone" dataKey="Lucro"  stroke={C.magenta} strokeWidth={2.5} fill="url(#gLucro)" />
                 </AreaChart>
               </ResponsiveContainer>
-           </div>
+            </div>
+          </div>
+
+          {/* Próximos embarques */}
+          <div className="rounded-[18px] overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+            <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: '1px solid var(--border-color)' }}>
+              <Plane size={16} style={{ color: C.cyan }} />
+              <p className="font-display font-bold text-[15px] text-[color:var(--text-primary)]">Próximos Embarques</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--bg-surface-alt)' }}>
+                    {['Passageiro / Voo', 'Trecho', 'Data · Hora', 'Check-in'].map(h => (
+                      <th key={h} className="px-4 py-3 text-[11px] font-bold" style={{ color: 'var(--text-placeholder)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {proximosVoos.length === 0 && (
+                    <tr><td colSpan={4} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Nenhum voo programado.</td></tr>
+                  )}
+                  {proximosVoos.map((voo: any) => {
+                    const is24h = new Date(voo.dataPartida).getTime() - now.getTime() < 86400000;
+                    const isLiberado = isCheckinLiberado(voo.dataPartida);
+                    const checkinUrl = getCheckinUrl(voo.ciaAerea, voo.localizador);
+                    return (
+                      <tr
+                        key={voo.id}
+                        style={{
+                          borderBottom: '1px solid var(--border-color)',
+                          background: is24h ? 'rgba(255,45,116,.05)' : 'transparent',
+                        }}
+                      >
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-semibold truncate max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{voo.passageiros}</p>
+                          <p className="font-mono-brand text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>
+                            {voo.ciaAerea} {voo.numeroVoo} · {voo.localizador || 'S/ LOC'}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono-brand text-[11px] font-medium px-2 py-0.5 rounded-lg" style={{ background: '#1B264E', color: '#cfd8f5' }}>{voo.origem}</span>
+                            <span style={{ color: 'var(--text-faint)' }}>→</span>
+                            <span className="font-mono-brand text-[11px] font-medium px-2 py-0.5 rounded-lg" style={{ background: '#1B264E', color: '#cfd8f5' }}>{voo.destino}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-semibold" style={{ color: is24h ? C.red : 'var(--text-primary)' }}>
+                            {new Date(voo.dataPartida).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {is24h && <p className="text-[10px] font-bold mt-0.5" style={{ color: C.red }}>Menos de 24h!</p>}
+                        </td>
+                        <td className="px-4 py-3">
+                          {isLiberado && checkinUrl !== '#' ? (
+                            <a href={checkinUrl} target="_blank" rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-white"
+                              style={{ background: C.teal, boxShadow: `0 4px 12px ${C.teal}44` }}>
+                              Check-in <ExternalLink size={10} />
+                            </a>
+                          ) : (
+                            <span className="text-[11px] font-semibold px-2 py-1 rounded-lg" style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-faint)' }}>Pendente</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
-        {/* Graph 2: Tipos de Venda */}
-        <div className="bg-surface rounded-2xl shadow-sm border border-border p-5 flex flex-col min-h-[350px]">
-           <div className="flex items-center gap-2 mb-2">
-              <PieChartIcon size={18} className="text-primary" />
-              <h4 className="font-black text-primary uppercase tracking-wider text-sm">Distribuição de Vendas</h4>
-           </div>
-           <p className="text-[10px] text-placeholder font-bold uppercase tracking-wider mb-2 text-center">{getPeriodLabel()}</p>
-           <div className="flex-1 w-full h-full min-h-[200px] flex items-center justify-center">
-              {vendasPorTipo.length > 0 ? (
+        {/* DIREITA */}
+        <div className="space-y-5 min-w-0">
+
+          {/* Saldo líquido */}
+          <div
+            className="rounded-[18px] p-5"
+            style={{
+              background: 'linear-gradient(150deg, #13204A 0%, #0E1838 100%)',
+              border: '1px solid var(--border-strong)',
+            }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Wallet size={16} style={{ color: C.teal }} />
+              <p className="font-display font-bold text-[15px]" style={{ color: 'var(--text-primary)' }}>Saldo Líquido</p>
+            </div>
+            <p className="font-display font-bold leading-none mb-4" style={{ fontSize: 30, color: saldo >= 0 ? C.teal : C.red, letterSpacing: '-0.02em' }}>
+              {formatCurrency(saldo)}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,.05)' }}>
+                <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-faint)' }}>Ticket Médio</p>
+                <p className="font-display font-bold text-[15px]" style={{ color: 'var(--text-primary)' }}>{formatCurrency(ticketMedio)}</p>
+              </div>
+              <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,.05)' }}>
+                <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-faint)' }}>Conversão</p>
+                <p className="font-display font-bold text-[15px]" style={{ color: 'var(--text-primary)' }}>{taxaConversao}%</p>
+                <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{leadsConvertidos}/{totalLeads} leads</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Donut distribuição */}
+          <div className="rounded-[18px] p-5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+            <p className="font-display font-bold text-[15px] text-[color:var(--text-primary)] mb-3">Distribuição de Vendas</p>
+            {vendasPorTipo.length > 0 ? (
+              <div style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={vendasPorTipo}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {vendasPorTipo.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
+                    <Pie data={vendasPorTipo} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value">
+                      {vendasPorTipo.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
-                    <RechartsTooltip 
-                       contentStyle={{ borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-primary)', fontSize: '12px' }}
-                    />
-                    <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '10px', color: 'var(--color-primary)' }} />
+                    <RechartsTooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border-color)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'Manrope' }} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: 11, fontFamily: 'Manrope', color: 'var(--text-muted)', paddingTop: 8 }} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="text-placeholder text-sm font-medium">Nenhuma venda no período</div>
-              )}
-           </div>
-        </div>
-      </div>
-
-      {/* Próximos 7 Dias */}
-      <div className="bg-surface rounded-2xl shadow-sm border border-border flex flex-col p-5 mb-6">
-        <h4 className="font-black text-primary uppercase tracking-wider mb-4 border-b border-border pb-2">Títulos a Pagar — Próximos 7 Dias</h4>
-        {proximosAPagar7Dias.length === 0 ? (
-           <p className="text-sm text-muted font-medium">Nenhum título a pagar nos próximos 7 dias.</p>
-        ) : (
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-             {proximosAPagar7Dias.map((c: any) => (
-                <div key={c.id} className="bg-surface-alt p-4 rounded-xl border border-border-hover border-l-4 border-l-amber-500 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-black text-amber-500 bg-amber-900/30 px-2 py-0.5 rounded tracking-widest mb-2 inline-block">
-                      {new Date(c.vencimento).toLocaleDateString('pt-BR')}
-                    </span>
-                    <h5 className="font-bold text-sm text-primary truncate" title={c.fornecedor}>{c.fornecedor}</h5>
-                  </div>
-                  <div className="mt-3 font-black text-primary pl-1">{formatCurrency(c.valor)}</div>
-                </div>
-             ))}
-           </div>
-        )}
-      </div>
-
-      {/* Utilities Tables */}
-      <div className="grid grid-cols-1 gap-6">
-        
-        {/* Table 1: Alerta Financeiro */}
-        <div className="bg-surface rounded-2xl shadow-sm border border-border flex flex-col max-h-[500px]">
-          <div className="p-4 bg-surface-alt border-b border-border rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
-            <h4 className="font-black text-white uppercase tracking-wider flex items-center gap-2"><AlertCircle size={18} className="text-amber-500" /> Alerta Financeiro</h4>
-            <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-1 rounded-full font-black uppercase flex items-center gap-1">Pendente & Atraso</span>
-          </div>
-          <div className="p-4 flex-1 overflow-auto">
-            {contasProximas.length === 0 ? <p className="text-sm text-muted font-medium">Nenhum título pendente ou em atraso.</p> : null}
-            {contasProximas.map((c: any) => {
-              const statusAtratado = calculateStatusAtrasado(c.vencimento, c.status);
-              return (
-              <div key={c.id} className={`flex items-start justify-between border-l-4 pl-3 py-2 mb-3 bg-surface-alt/50 rounded-r-lg border border-border border-l-transparent last:mb-0
-                 ${statusAtratado === 'Atrasado' ? '!border-l-red-500 bg-red-900/30/30' : c.tipo === 'Receber' ? '!border-l-blue-400' : '!border-l-[#1D9E75]'}`}>
-                <div>
-                  <div className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${statusAtratado === 'Atrasado' ? 'text-red-400' : c.tipo === 'Receber' ? 'text-blue-500' : 'text-amber-400'}`}>
-                    <span>{c.tipo === 'Pagar' ? 'A Pagar (Fornecedor)' : 'A Receber (Cliente)'}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[8px] tracking-widest ${statusAtratado === 'Atrasado' ? 'bg-red-200' : 'bg-surface-hover text-muted'}`}>{statusAtratado === 'Atrasado' ? 'Atrasado' : new Date(c.vencimento).toLocaleDateString('pt-BR')}</span>
-                  </div>
-                  <div className="font-bold text-sm text-primary truncate max-w-[300px] mt-1" title={c.cliente || c.fornecedor}>
-                    {c.cliente || c.fornecedor}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-black text-primary">{formatCurrency(c.valor)}</div>
-                </div>
               </div>
-            )})}
+            ) : (
+              <p className="text-sm text-center py-8" style={{ color: 'var(--text-muted)' }}>Nenhuma venda no período.</p>
+            )}
+          </div>
+
+          {/* Alertas compactos */}
+          {alertas.length > 0 && (
+            <div className="rounded-[18px] overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+              <p className="font-display font-bold text-[14px] px-4 py-3" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)' }}>Alertas</p>
+              <div className="max-h-52 overflow-y-auto divide-y" style={{ borderColor: 'var(--border-color)' }}>
+                {alertas.slice(0, 8).map((a, i) => {
+                  const dot = a.tipo === 'error' ? C.red : a.tipo === 'warn' ? C.amber : C.cyan;
+                  return (
+                    <div key={i} className="flex items-start gap-3 px-4 py-3">
+                      <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: dot }} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{a.label}</p>
+                        <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{a.sub}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Top Destinos */}
+          <div className="rounded-[18px] p-5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+            <p className="font-display font-bold text-[15px] text-[color:var(--text-primary)] mb-4">Top Destinos</p>
+            {topDestinos.length === 0 ? (
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sem dados.</p>
+            ) : (
+              <div className="space-y-3">
+                {topDestinos.map(([dest, cnt], i) => (
+                  <div key={dest}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-semibold" style={{ color: 'var(--text-primary)' }}><span style={{ color: 'var(--text-faint)', marginRight: 6 }}>{i + 1}.</span>{dest}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{cnt}x</span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-surface-alt)' }}>
+                      <div className="h-full rounded-full" style={{ width: `${(cnt / maxDestino) * 100}%`, background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-
       </div>
+
+      {/* ── Alerta financeiro ── */}
+      {contasProximas.length > 0 && (
+        <div className="rounded-[18px] overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+          <p className="font-display font-bold text-[15px] px-5 py-4" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)' }}>
+            Títulos Pendentes (próximos 7 dias)
+          </p>
+          <div className="max-h-64 overflow-y-auto divide-y" style={{ borderColor: 'var(--border-color)' }}>
+            {contasProximas.map((c: any) => {
+              const atrasado = calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado';
+              const cor = atrasado ? C.red : c.tipo === 'Receber' ? C.cyan : C.amber;
+              return (
+                <div key={c.id} className="flex items-center justify-between px-5 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cor }} />
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{c.cliente || c.fornecedor}</p>
+                      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{c.tipo === 'Pagar' ? 'A Pagar' : 'A Receber'} · {new Date(c.vencimento).toLocaleDateString('pt-BR')}{atrasado ? ' · ATRASADO' : ''}</p>
+                    </div>
+                  </div>
+                  <p className="font-display font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{formatCurrency(c.valor)}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-function subDays(date: Date, amount: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() - amount);
-  return d;
-}
-

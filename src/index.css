@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -7,42 +8,69 @@
   --color-surface-alt: var(--bg-surface-alt);
   --color-surface-border: var(--border-color);
   --color-border: var(--border-color);
-  --color-border-hover: var(--border-hover);
+  --color-border-hover: var(--border-strong);
   --color-primary: var(--text-primary);
   --color-secondary: var(--text-secondary);
   --color-muted: var(--text-muted);
   --color-placeholder: var(--text-placeholder);
   --color-sidebar: var(--bg-sidebar);
+
+  /* Brand colors como tokens Tailwind */
+  --color-magenta: #FF2D74;
+  --color-cyan-brand: #25C2F2;
+  --color-orange-brand: #FF9F2E;
+  --color-teal-brand: #1FBE93;
+  --color-amber-brand: #FBBF24;
+  --color-red-brand: #FF5A6E;
 }
 
+/* ── Light theme ── */
 :root {
   --bg-main: #F4F6F9;
   --bg-surface: #FFFFFF;
-  --bg-surface-hover: #F1F5F9;
+  --bg-surface-hover: rgba(0,0,0,.03);
   --bg-surface-alt: #F8FAFC;
-  --border-color: #E2E8F0;
-  --border-hover: #CBD5E1;
+  --bg-surface-raised: #FFFFFF;
+  --bg-sidebar: #070D22;
+  --border-color: rgba(0,0,0,.08);
+  --border-strong: rgba(0,0,0,.14);
   --text-primary: #0F172A;
   --text-secondary: #334155;
   --text-muted: #64748B;
   --text-placeholder: #94A3B8;
-  --bg-sidebar: #0A2463;
+  --text-faint: #CBD5E1;
   color-scheme: light;
 }
 
+/* ── Dark theme — navy espacial ── */
 .dark {
-  --bg-main: #18181A;
-  --bg-surface: #1F2220;
-  --bg-surface-hover: #2A2E2C;
-  --bg-surface-alt: #1A1D1B;
-  --border-color: #333333;
-  --border-hover: #444444;
-  --text-primary: #F4F4F5;
-  --text-secondary: #D4D4D8;
-  --text-muted: #A1A1AA;
-  --text-placeholder: #71717A;
-  --bg-sidebar: #1F2220;
+  --bg-main: #070D22;
+  --bg-surface: #0F1838;
+  --bg-surface-hover: rgba(255,255,255,.04);
+  --bg-surface-alt: #0E1733;
+  --bg-surface-raised: #13204A;
+  --bg-sidebar: #0A1129;
+  --border-color: rgba(255,255,255,.07);
+  --border-strong: rgba(255,255,255,.12);
+  --text-primary: #EEF2FF;
+  --text-secondary: #AEB9DC;
+  --text-muted: #8C99BE;
+  --text-placeholder: #6B789F;
+  --text-faint: #566394;
   color-scheme: dark;
+}
+
+/* ── Tipografia base ── */
+body {
+  font-family: 'Manrope', system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+.font-mono-brand {
+  font-family: 'IBM Plex Mono', monospace;
 }
 
 /* ── Global form element theming ── */
@@ -50,6 +78,7 @@ input, select, textarea {
   background-color: var(--bg-surface-alt);
   color: var(--text-primary);
   border-color: var(--border-color);
+  font-family: 'Manrope', system-ui, sans-serif;
 }
 
 input::placeholder, textarea::placeholder {
@@ -70,3 +99,37 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   filter: invert(0.8);
 }
+
+/* ── Overrides globais de tema (migração para navy espacial) ──
+   Remove bordas-acento laterais e uniformiza cards/inputs */
+
+/* botão primário padrão → magenta */
+.btn-primary {
+  background: #FF2D74;
+  box-shadow: 0 6px 18px rgba(255,45,116,.4);
+  color: #fff;
+  border-radius: 11px;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+
+/* inputs padronizados */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: rgba(255,45,116,.6) !important;
+  box-shadow: 0 0 0 3px rgba(255,45,116,.12);
+}
+
+/* scrollbar fina */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 10px; }
+.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); }
+
+/* ── Utilitários de animação ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn .2s ease; }
