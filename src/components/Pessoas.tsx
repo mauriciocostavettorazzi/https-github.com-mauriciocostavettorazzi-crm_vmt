@@ -380,10 +380,17 @@ export function Pessoas({ data, updateData }: any) {
     return matchTipo && matchSearch;
   });
 
+  // Retorna o primeiro passaporte disponível (novo array ou campo legado)
+  const getPrimeiroPP = (p: Pessoa) => {
+    if ((p.passaportes || []).length > 0) return p.passaportes![0];
+    if (p.passaporte) return { numero: p.passaporte, validade: p.passaporteValidade || '', pais: p.passaporteNacionalidade || '', emissao: p.passaporteEmissao || '', id: '' };
+    return null;
+  };
+
   const passagemAlert = (p: Pessoa) => {
-    if (!p.passaporteValidade) return null;
-    const d = new Date(p.passaporteValidade);
-    const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    const pp = getPrimeiroPP(p);
+    if (!pp?.validade) return null;
+    const diff = (new Date(pp.validade).getTime() - Date.now()) / 86400000;
     if (diff < 0) return 'text-red-400';
     if (diff < 180) return 'text-amber-400';
     return null;
@@ -482,14 +489,21 @@ export function Pessoas({ data, updateData }: any) {
                     <p className="text-[10px] text-placeholder truncate max-w-[160px]">{p.email || ''}</p>
                   </td>
                   <td className="px-4 py-3">
-                    {p.passaporte ? (
-                      <div>
-                        <p className="text-xs font-mono text-muted">{p.passaporte}</p>
-                        <p className={`text-[10px] font-bold ${alertColor || 'text-placeholder'}`}>
-                          {p.passaporteValidade ? new Date(p.passaporteValidade).toLocaleDateString('pt-BR') : '—'}
-                        </p>
-                      </div>
-                    ) : <span className="text-placeholder text-xs">—</span>}
+                    {(() => {
+                      const pp = getPrimeiroPP(p);
+                      if (!pp) return <span className="text-placeholder text-xs">—</span>;
+                      return (
+                        <div>
+                          <p className="text-xs font-mono text-muted">{pp.numero}</p>
+                          <p className={`text-[10px] font-bold ${alertColor || 'text-placeholder'}`}>
+                            {pp.validade ? new Date(pp.validade + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
+                          </p>
+                          {(p.passaportes || []).length > 1 && (
+                            <p className="text-[9px] text-sky-400">+{(p.passaportes!).length - 1} mais</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     {familiaCount > 0 ? (
