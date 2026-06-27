@@ -62,6 +62,22 @@ export type Pessoa = {
   criadoEm?: string;
   // Fornecedor específico
   isFornecedorViagem?: boolean;
+  // Classificação jurídica
+  pessoaJuridica?: boolean;
+  nomeFantasia?: string;
+  inscricaoEstadual?: string;
+  // Contato
+  ddi?: string;
+  // Passaportes múltiplos
+  passaportes?: PassaporteItem[];
+};
+
+export type PassaporteItem = {
+  id: string;
+  numero: string;
+  emissao: string;
+  validade: string;
+  pais: string;
 };
 
 export type Cliente = {

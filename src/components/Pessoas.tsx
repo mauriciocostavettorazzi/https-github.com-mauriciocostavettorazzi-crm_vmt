@@ -1,9 +1,178 @@
 import React, { useState } from 'react';
 import { generateId } from '../utils';
 import { toast } from '../toast';
-import { PlusCircle, X, Search, Trash2, Edit, Star, UserCheck, Users, Building2, UserRound, ChevronRight } from 'lucide-react';
+import { PlusCircle, X, Search, Trash2, Edit, Star, UserCheck, Users, Building2, UserRound, ChevronDown, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import type { Pessoa, PessoaDocumento } from '../types';
+import type { Pessoa, PessoaDocumento, PassaporteItem } from '../types';
+
+// ── DDI list ──────────────────────────────────────────────────────────────────
+const DDI_LIST = [
+  { code: '+55', flag: '🇧🇷', label: 'Brasil' },
+  { code: '+1',  flag: '🇺🇸', label: 'EUA / Canadá' },
+  { code: '+54', flag: '🇦🇷', label: 'Argentina' },
+  { code: '+598', flag: '🇺🇾', label: 'Uruguai' },
+  { code: '+595', flag: '🇵🇾', label: 'Paraguai' },
+  { code: '+56', flag: '🇨🇱', label: 'Chile' },
+  { code: '+51', flag: '🇵🇪', label: 'Peru' },
+  { code: '+57', flag: '🇨🇴', label: 'Colômbia' },
+  { code: '+58', flag: '🇻🇪', label: 'Venezuela' },
+  { code: '+593', flag: '🇪🇨', label: 'Equador' },
+  { code: '+591', flag: '🇧🇴', label: 'Bolívia' },
+  { code: '+507', flag: '🇵🇦', label: 'Panamá' },
+  { code: '+52', flag: '🇲🇽', label: 'México' },
+  { code: '+34', flag: '🇪🇸', label: 'Espanha' },
+  { code: '+351', flag: '🇵🇹', label: 'Portugal' },
+  { code: '+39', flag: '🇮🇹', label: 'Itália' },
+  { code: '+33', flag: '🇫🇷', label: 'França' },
+  { code: '+49', flag: '🇩🇪', label: 'Alemanha' },
+  { code: '+44', flag: '🇬🇧', label: 'Reino Unido' },
+  { code: '+41', flag: '🇨🇭', label: 'Suíça' },
+  { code: '+31', flag: '🇳🇱', label: 'Holanda' },
+  { code: '+32', flag: '🇧🇪', label: 'Bélgica' },
+  { code: '+43', flag: '🇦🇹', label: 'Áustria' },
+  { code: '+48', flag: '🇵🇱', label: 'Polônia' },
+  { code: '+7',  flag: '🇷🇺', label: 'Rússia' },
+  { code: '+81', flag: '🇯🇵', label: 'Japão' },
+  { code: '+82', flag: '🇰🇷', label: 'Coreia do Sul' },
+  { code: '+86', flag: '🇨🇳', label: 'China' },
+  { code: '+91', flag: '🇮🇳', label: 'Índia' },
+  { code: '+971', flag: '🇦🇪', label: 'Emirados Árabes' },
+  { code: '+972', flag: '🇮🇱', label: 'Israel' },
+  { code: '+27', flag: '🇿🇦', label: 'África do Sul' },
+  { code: '+61', flag: '🇦🇺', label: 'Austrália' },
+  { code: '+64', flag: '🇳🇿', label: 'Nova Zelândia' },
+];
+
+// ── Country list (Portuguese) ─────────────────────────────────────────────────
+const COUNTRIES = [
+  { name: 'Brasileira', flag: '🇧🇷' },
+  { name: 'Americana', flag: '🇺🇸' },
+  { name: 'Portuguesa', flag: '🇵🇹' },
+  { name: 'Argentina', flag: '🇦🇷' },
+  { name: 'Uruguaia', flag: '🇺🇾' },
+  { name: 'Chilena', flag: '🇨🇱' },
+  { name: 'Colombiana', flag: '🇨🇴' },
+  { name: 'Peruana', flag: '🇵🇪' },
+  { name: 'Boliviana', flag: '🇧🇴' },
+  { name: 'Paraguaia', flag: '🇵🇾' },
+  { name: 'Venezuelana', flag: '🇻🇪' },
+  { name: 'Equatoriana', flag: '🇪🇨' },
+  { name: 'Mexicana', flag: '🇲🇽' },
+  { name: 'Canadense', flag: '🇨🇦' },
+  { name: 'Alemã', flag: '🇩🇪' },
+  { name: 'Austríaca', flag: '🇦🇹' },
+  { name: 'Belga', flag: '🇧🇪' },
+  { name: 'Britânica', flag: '🇬🇧' },
+  { name: 'Chinesa', flag: '🇨🇳' },
+  { name: 'Coreana', flag: '🇰🇷' },
+  { name: 'Cubana', flag: '🇨🇺' },
+  { name: 'Dinamarquesa', flag: '🇩🇰' },
+  { name: 'Egípcia', flag: '🇪🇬' },
+  { name: 'Eslovaca', flag: '🇸🇰' },
+  { name: 'Eslovena', flag: '🇸🇮' },
+  { name: 'Espanhola', flag: '🇪🇸' },
+  { name: 'Finlandesa', flag: '🇫🇮' },
+  { name: 'Francesa', flag: '🇫🇷' },
+  { name: 'Grega', flag: '🇬🇷' },
+  { name: 'Holandesa', flag: '🇳🇱' },
+  { name: 'Húngara', flag: '🇭🇺' },
+  { name: 'Indiana', flag: '🇮🇳' },
+  { name: 'Indonésia', flag: '🇮🇩' },
+  { name: 'Iraniana', flag: '🇮🇷' },
+  { name: 'Israelense', flag: '🇮🇱' },
+  { name: 'Italiana', flag: '🇮🇹' },
+  { name: 'Japonesa', flag: '🇯🇵' },
+  { name: 'Marroquina', flag: '🇲🇦' },
+  { name: 'Norueguesa', flag: '🇳🇴' },
+  { name: 'Polonesa', flag: '🇵🇱' },
+  { name: 'Russa', flag: '🇷🇺' },
+  { name: 'Sul-Africana', flag: '🇿🇦' },
+  { name: 'Sueca', flag: '🇸🇪' },
+  { name: 'Suíça', flag: '🇨🇭' },
+  { name: 'Tailandesa', flag: '🇹🇭' },
+  { name: 'Turca', flag: '🇹🇷' },
+  { name: 'Árabe (EAU)', flag: '🇦🇪' },
+  { name: 'Australiana', flag: '🇦🇺' },
+  { name: 'Neozelandesa', flag: '🇳🇿' },
+  { name: 'Outra', flag: '🌍' },
+];
+
+const PAIS_LIST = [
+  { name: 'Brasil', flag: '🇧🇷' },
+  { name: 'Estados Unidos', flag: '🇺🇸' },
+  { name: 'Portugal', flag: '🇵🇹' },
+  { name: 'Argentina', flag: '🇦🇷' },
+  { name: 'Uruguai', flag: '🇺🇾' },
+  { name: 'Chile', flag: '🇨🇱' },
+  { name: 'Colômbia', flag: '🇨🇴' },
+  { name: 'Peru', flag: '🇵🇪' },
+  { name: 'Bolívia', flag: '🇧🇴' },
+  { name: 'Paraguai', flag: '🇵🇾' },
+  { name: 'Venezuela', flag: '🇻🇪' },
+  { name: 'Equador', flag: '🇪🇨' },
+  { name: 'México', flag: '🇲🇽' },
+  { name: 'Canadá', flag: '🇨🇦' },
+  { name: 'Alemanha', flag: '🇩🇪' },
+  { name: 'Áustria', flag: '🇦🇹' },
+  { name: 'Bélgica', flag: '🇧🇪' },
+  { name: 'Reino Unido', flag: '🇬🇧' },
+  { name: 'China', flag: '🇨🇳' },
+  { name: 'Coreia do Sul', flag: '🇰🇷' },
+  { name: 'Dinamarca', flag: '🇩🇰' },
+  { name: 'Egito', flag: '🇪🇬' },
+  { name: 'Espanha', flag: '🇪🇸' },
+  { name: 'Finlândia', flag: '🇫🇮' },
+  { name: 'França', flag: '🇫🇷' },
+  { name: 'Grécia', flag: '🇬🇷' },
+  { name: 'Holanda', flag: '🇳🇱' },
+  { name: 'Hungria', flag: '🇭🇺' },
+  { name: 'Índia', flag: '🇮🇳' },
+  { name: 'Indonésia', flag: '🇮🇩' },
+  { name: 'Israel', flag: '🇮🇱' },
+  { name: 'Itália', flag: '🇮🇹' },
+  { name: 'Japão', flag: '🇯🇵' },
+  { name: 'Marrocos', flag: '🇲🇦' },
+  { name: 'Noruega', flag: '🇳🇴' },
+  { name: 'Polônia', flag: '🇵🇱' },
+  { name: 'Rússia', flag: '🇷🇺' },
+  { name: 'África do Sul', flag: '🇿🇦' },
+  { name: 'Suécia', flag: '🇸🇪' },
+  { name: 'Suíça', flag: '🇨🇭' },
+  { name: 'Tailândia', flag: '🇹🇭' },
+  { name: 'Turquia', flag: '🇹🇷' },
+  { name: 'Emirados Árabes', flag: '🇦🇪' },
+  { name: 'Austrália', flag: '🇦🇺' },
+  { name: 'Nova Zelândia', flag: '🇳🇿' },
+  { name: 'Outro', flag: '🌍' },
+];
+
+// ── Masks ─────────────────────────────────────────────────────────────────────
+function maskCPF(v: string) {
+  return v.replace(/\D/g, '').slice(0, 11)
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+function maskRG(v: string) {
+  return v.replace(/\D/g, '').slice(0, 9)
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1})$/, '$1-$2');
+}
+function maskPhone(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim().replace(/-$/, '');
+  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim().replace(/-$/, '');
+}
+function maskRenda(v: string) {
+  const num = v.replace(/\D/g, '');
+  if (!num) return '';
+  return (parseInt(num, 10) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function emptyPassaporte(): PassaporteItem {
+  return { id: generateId(), numero: '', emissao: '', validade: '', pais: 'Brasil' };
+}
 
 const TIPOS = ['Passageiro', 'Cliente', 'Fornecedor', 'Representante'] as const;
 const TABS = ['Contato', 'Documentos', 'Informações', 'Endereço', 'Família', 'Anexos', 'Observação'] as const;
@@ -37,15 +206,17 @@ const FILTER_OPTS = [
 
 const emptyForm = (): Omit<Pessoa, 'id' | 'criadoEm'> => ({
   nome: '', tipo: ['Cliente'], ativo: true, rating: 0,
-  telefone: '', email: '', redeSocial: '', site: '', chavePix: '', aceitaComunicacao: false,
-  documento: '', rg: '', orgaoEmissorRg: '', inscricaoMunicipal: '', idEstrangeiro: '',
+  ddi: '+55', telefone: '', email: '', redeSocial: '', site: '', chavePix: '', aceitaComunicacao: false,
+  documento: '', rg: '', orgaoEmissorRg: '', inscricaoMunicipal: '', inscricaoEstadual: '', idEstrangeiro: '',
   nacionalidade: '', estadoCivil: '', passaporte: '', passaporteEmissao: '', passaporteValidade: '',
   passaporteNacionalidade: '', visto: '', vistoValidade: '',
+  passaportes: [],
   dataNascimento: '', genero: '', profissao: '', renda: undefined, canalVenda: '',
   contatoEmergenciaNome: '', contatoEmergenciaTel: '',
   pais: 'Brasil', cep: '', endereco: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '',
   familia: [], documentos: [], observacoes: '',
   isFornecedorViagem: false,
+  pessoaJuridica: false, nomeFantasia: '',
 });
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -365,8 +536,8 @@ export function Pessoas({ data, updateData }: any) {
                       {formData.ativo ? 'Ativo' : 'Inativo'}
                     </label>
                   </div>
-                  {/* Tipo checkboxes */}
-                  <div className="flex flex-wrap gap-2">
+                  {/* Tipo checkboxes + toggle PF/PJ */}
+                  <div className="flex flex-wrap items-center gap-2">
                     {TIPOS.map(t => {
                       const Icon = TIPO_ICON[t];
                       const checked = formData.tipo.includes(t);
@@ -377,10 +548,31 @@ export function Pessoas({ data, updateData }: any) {
                         </button>
                       );
                     })}
+
+                    {/* Divisor + Toggle PF / PJ */}
+                    <span className="w-px h-5 bg-border mx-1 shrink-0" />
+                    <div className={`flex items-center rounded-lg border overflow-hidden text-xs font-black uppercase ${editingId ? 'border-border opacity-50 cursor-not-allowed' : 'border-border'}`}
+                      title={editingId ? 'Classificação PF/PJ não pode ser alterada após o cadastro' : undefined}>
+                      <button type="button"
+                        disabled={!!editingId}
+                        onClick={() => fd({ pessoaJuridica: false })}
+                        className={`px-3 py-1.5 transition-colors flex items-center gap-1 ${!formData.pessoaJuridica ? 'bg-sky-700/60 text-sky-300' : 'text-muted'} ${editingId ? 'cursor-not-allowed' : 'hover:text-primary'}`}>
+                        PF
+                      </button>
+                      <span className="w-px h-full bg-border" />
+                      <button type="button"
+                        disabled={!!editingId}
+                        onClick={() => fd({ pessoaJuridica: true })}
+                        className={`px-3 py-1.5 transition-colors flex items-center gap-1 ${formData.pessoaJuridica ? 'bg-violet-700/60 text-violet-300' : 'text-muted'} ${editingId ? 'cursor-not-allowed' : 'hover:text-primary'}`}>
+                        PJ
+                      </button>
+                      {editingId && <Lock size={10} className="text-muted mr-2" />}
+                    </div>
+
                     {formData.tipo.includes('Fornecedor') && (
-                      <label className="flex items-center gap-1.5 text-xs font-bold text-purple-400 cursor-pointer ml-2">
+                      <label className="flex items-center gap-1.5 text-xs font-bold text-purple-400 cursor-pointer ml-1">
                         <input type="checkbox" checked={formData.isFornecedorViagem || false} onChange={e => fd({ isFornecedorViagem: e.target.checked })} />
-                        Fornecedor de Viagem (milhas/bilhetes)
+                        Fornecedor de Viagem
                       </label>
                     )}
                   </div>
@@ -412,7 +604,28 @@ export function Pessoas({ data, updateData }: any) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 md:col-span-1">
                     <label className={labelCls}>Telefone / WhatsApp</label>
-                    <input type="text" className={inputCls} value={formData.telefone || ''} onChange={e => fd({ telefone: e.target.value })} placeholder="(11) 99999-9999" />
+                    <div className="flex gap-0">
+                      {/* DDI selector */}
+                      <div className="relative shrink-0">
+                        <select
+                          value={formData.ddi || '+55'}
+                          onChange={e => fd({ ddi: e.target.value })}
+                          className="appearance-none h-full pl-2 pr-6 py-2 text-sm bg-surface-alt border border-border-hover rounded-l-lg text-primary focus:outline-none focus:border-[#1D9E75] cursor-pointer"
+                          style={{ minWidth: 72 }}>
+                          {DDI_LIST.map(d => (
+                            <option key={d.code + d.label} value={d.code}>{d.flag} {d.code}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                      </div>
+                      <input
+                        type="text"
+                        className={inputCls + ' rounded-l-none border-l-0'}
+                        value={formData.telefone || ''}
+                        onChange={e => fd({ telefone: (formData.ddi === '+55' || !formData.ddi) ? maskPhone(e.target.value) : e.target.value })}
+                        placeholder={(formData.ddi === '+55' || !formData.ddi) ? '(21) 99999-9999' : '999999999'}
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className={labelCls}>E-mail</label>
@@ -441,35 +654,128 @@ export function Pessoas({ data, updateData }: any) {
 
               {/* TAB: Documentos */}
               {activeTab === 'Documentos' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div><label className={labelCls}>CPF / CNPJ</label><input type="text" className={inputCls} value={formData.documento || ''} onChange={e => fd({ documento: e.target.value })} /></div>
-                  <div><label className={labelCls}>RG</label><input type="text" className={inputCls} value={formData.rg || ''} onChange={e => fd({ rg: e.target.value })} /></div>
-                  <div><label className={labelCls}>Órgão Emissor RG</label><input type="text" className={inputCls} value={formData.orgaoEmissorRg || ''} onChange={e => fd({ orgaoEmissorRg: e.target.value })} /></div>
-                  <div><label className={labelCls}>Inscrição Municipal</label><input type="text" className={inputCls} value={formData.inscricaoMunicipal || ''} onChange={e => fd({ inscricaoMunicipal: e.target.value })} /></div>
-                  <div><label className={labelCls}>ID Estrangeiro</label><input type="text" className={inputCls} value={formData.idEstrangeiro || ''} onChange={e => fd({ idEstrangeiro: e.target.value })} /></div>
-                  <div><label className={labelCls}>Nacionalidade</label><input type="text" className={inputCls} value={formData.nacionalidade || ''} onChange={e => fd({ nacionalidade: e.target.value })} /></div>
-                  <div><label className={labelCls}>Estado Civil</label>
-                    <select className={inputCls} value={formData.estadoCivil || ''} onChange={e => fd({ estadoCivil: e.target.value as any })}>
-                      <option value="">Não informado</option>
-                      <option>Solteiro</option><option>Casado</option><option>Divorciado</option><option>Viúvo</option><option>União Estável</option>
-                    </select>
+                <div className="space-y-5">
+                  {/* Badge indicador */}
+                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${formData.pessoaJuridica ? 'bg-violet-900/40 text-violet-300' : 'bg-sky-900/40 text-sky-300'}`}>
+                    {formData.pessoaJuridica ? '🏢 Pessoa Jurídica' : '👤 Pessoa Física'}
+                    <span className="text-[10px] font-normal opacity-60">· altere com o toggle PF/PJ no topo</span>
                   </div>
-                  <div className="col-span-2 border-t border-border pt-4 mt-2">
-                    <p className="text-xs font-black text-muted uppercase tracking-wider mb-3">Passaporte</p>
+
+                  {/* ── PESSOA JURÍDICA ── */}
+                  {formData.pessoaJuridica ? (
                     <div className="grid grid-cols-2 gap-4">
-                      <div><label className={labelCls}>Nº Passaporte</label><input type="text" className={inputCls + ' font-mono uppercase'} value={formData.passaporte || ''} onChange={e => fd({ passaporte: e.target.value })} /></div>
-                      <div><label className={labelCls}>Emissão</label><input type="date" className={inputCls} value={formData.passaporteEmissao || ''} onChange={e => fd({ passaporteEmissao: e.target.value })} /></div>
-                      <div><label className={labelCls}>Validade</label><input type="date" className={inputCls} value={formData.passaporteValidade || ''} onChange={e => fd({ passaporteValidade: e.target.value })} /></div>
-                      <div><label className={labelCls}>País do Passaporte</label><input type="text" className={inputCls} value={formData.passaporteNacionalidade || ''} onChange={e => fd({ passaporteNacionalidade: e.target.value })} /></div>
+                      <div className="col-span-2">
+                        <label className={labelCls}>CNPJ</label>
+                        <input type="text" className={inputCls + ' font-mono'} placeholder="00.000.000/0001-00" value={formData.documento || ''} onChange={e => fd({ documento: e.target.value })} />
+                      </div>
+                      <div className="col-span-2">
+                        <label className={labelCls}>Nome Fantasia</label>
+                        <input type="text" className={inputCls} value={formData.nomeFantasia || ''} onChange={e => fd({ nomeFantasia: e.target.value })} placeholder="Nome comercial (se diferente da Razão Social)" />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Inscrição Municipal</label>
+                        <input type="text" className={inputCls + ' font-mono'} value={formData.inscricaoMunicipal || ''} onChange={e => fd({ inscricaoMunicipal: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Inscrição Estadual</label>
+                        <input type="text" className={inputCls + ' font-mono'} value={formData.inscricaoEstadual || ''} onChange={e => fd({ inscricaoEstadual: e.target.value })} />
+                      </div>
+                      <div className="col-span-2 border-t border-border pt-4">
+                        <p className="text-xs text-muted">📎 Contrato Social e demais documentos da empresa podem ser anexados na aba <strong className="text-primary">Anexos</strong>.</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="col-span-2 border-t border-border pt-4">
-                    <p className="text-xs font-black text-muted uppercase tracking-wider mb-3">Visto</p>
+                  ) : (
+                  /* ── PESSOA FÍSICA ── */
                     <div className="grid grid-cols-2 gap-4">
-                      <div><label className={labelCls}>Nº Visto</label><input type="text" className={inputCls + ' font-mono'} value={formData.visto || ''} onChange={e => fd({ visto: e.target.value })} /></div>
-                      <div><label className={labelCls}>Validade do Visto</label><input type="date" className={inputCls} value={formData.vistoValidade || ''} onChange={e => fd({ vistoValidade: e.target.value })} /></div>
+                      <div>
+                        <label className={labelCls}>CPF</label>
+                        <input type="text" className={inputCls + ' font-mono'} placeholder="000.000.000-00" maxLength={14} value={formData.documento || ''} onChange={e => fd({ documento: maskCPF(e.target.value) })} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>RG</label>
+                        <input type="text" className={inputCls + ' font-mono'} placeholder="00.000.000-0" maxLength={12} value={formData.rg || ''} onChange={e => fd({ rg: maskRG(e.target.value) })} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Órgão Emissor RG</label>
+                        <input type="text" className={inputCls} value={formData.orgaoEmissorRg || ''} onChange={e => fd({ orgaoEmissorRg: e.target.value })} placeholder="SSP/SP" />
+                      </div>
+                      <div>
+                        <label className={labelCls}>ID Estrangeiro</label>
+                        <input type="text" className={inputCls + ' font-mono'} value={formData.idEstrangeiro || ''} onChange={e => fd({ idEstrangeiro: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Nacionalidade</label>
+                        <select className={inputCls} value={formData.nacionalidade || ''} onChange={e => fd({ nacionalidade: e.target.value })}>
+                          <option value="">Selecione...</option>
+                          {COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className={labelCls}>Estado Civil</label>
+                        <select className={inputCls} value={formData.estadoCivil || ''} onChange={e => fd({ estadoCivil: e.target.value as any })}>
+                          <option value="">Não informado</option>
+                          <option>Solteiro</option><option>Casado</option><option>Divorciado</option><option>Viúvo</option><option>União Estável</option>
+                        </select>
+                      </div>
+
+                      {/* Passaportes múltiplos */}
+                      <div className="col-span-2 border-t border-border pt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-xs font-black text-muted uppercase tracking-wider">
+                            Passaportes <span className="text-placeholder font-normal normal-case">({(formData.passaportes || []).length} cadastrado{(formData.passaportes || []).length !== 1 ? 's' : ''})</span>
+                          </p>
+                          <button type="button"
+                            onClick={() => fd({ passaportes: [...(formData.passaportes || []), emptyPassaporte()] })}
+                            className="flex items-center gap-1 text-xs font-bold text-[#1D9E75] hover:text-emerald-300 transition-colors">
+                            <PlusCircle size={14} /> Adicionar passaporte
+                          </button>
+                        </div>
+                        {(formData.passaportes || []).length === 0 && (
+                          <p className="text-xs text-placeholder text-center py-3 bg-surface-alt rounded-lg">Nenhum passaporte cadastrado.</p>
+                        )}
+                        <div className="space-y-3">
+                          {(formData.passaportes || []).map((pp: PassaporteItem, idx: number) => {
+                            const updatePP = (patch: Partial<PassaporteItem>) =>
+                              fd({ passaportes: (formData.passaportes || []).map((p: PassaporteItem) => p.id === pp.id ? { ...p, ...patch } : p) });
+                            const removePP = () => fd({ passaportes: (formData.passaportes || []).filter((p: PassaporteItem) => p.id !== pp.id) });
+                            const exp = pp.validade ? (new Date(pp.validade).getTime() - Date.now()) / 86400000 : null;
+                            const expColor = exp === null ? '' : exp < 0 ? 'text-red-400' : exp < 180 ? 'text-amber-400' : 'text-emerald-400';
+                            return (
+                              <div key={pp.id} className="bg-surface-alt border border-border rounded-xl p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-black text-muted uppercase tracking-wider">Passaporte {idx + 1}</span>
+                                  <div className="flex items-center gap-2">
+                                    {exp !== null && <span className={`text-[10px] font-bold ${expColor}`}>{exp < 0 ? 'Vencido' : exp < 180 ? `Vence em ${Math.round(exp)}d` : 'Válido'}</span>}
+                                    <button type="button" onClick={removePP} className="text-red-400 hover:text-red-300 p-0.5"><X size={14} /></button>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div><label className={labelCls}>Nº Passaporte</label><input type="text" className={inputCls + ' font-mono uppercase'} value={pp.numero} onChange={e => updatePP({ numero: e.target.value.toUpperCase() })} placeholder="AB123456" /></div>
+                                  <div>
+                                    <label className={labelCls}>País Emissor</label>
+                                    <select className={inputCls} value={pp.pais} onChange={e => updatePP({ pais: e.target.value })}>
+                                      {PAIS_LIST.map(p => <option key={p.name} value={p.name}>{p.flag} {p.name}</option>)}
+                                    </select>
+                                  </div>
+                                  <div><label className={labelCls}>Emissão</label><input type="date" className={inputCls} value={pp.emissao} onChange={e => updatePP({ emissao: e.target.value })} /></div>
+                                  <div><label className={labelCls}>Validade</label><input type="date" className={inputCls} value={pp.validade} onChange={e => updatePP({ validade: e.target.value })} /></div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Visto */}
+                      <div className="col-span-2 border-t border-border pt-4">
+                        <p className="text-xs font-black text-muted uppercase tracking-wider mb-3">Visto</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div><label className={labelCls}>Nº Visto</label><input type="text" className={inputCls + ' font-mono'} value={formData.visto || ''} onChange={e => fd({ visto: e.target.value })} /></div>
+                          <div><label className={labelCls}>Validade do Visto</label><input type="date" className={inputCls} value={formData.vistoValidade || ''} onChange={e => fd({ vistoValidade: e.target.value })} /></div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -483,7 +789,15 @@ export function Pessoas({ data, updateData }: any) {
                     </select>
                   </div>
                   <div><label className={labelCls}>Profissão</label><input type="text" className={inputCls} value={formData.profissao || ''} onChange={e => fd({ profissao: e.target.value })} /></div>
-                  <div><label className={labelCls}>Renda Mensal (R$)</label><input type="number" min="0" className={inputCls} value={formData.renda || ''} onChange={e => fd({ renda: e.target.value ? Number(e.target.value) : undefined })} /></div>
+                  <div>
+                    <label className={labelCls}>Renda Mensal</label>
+                    <input type="text" inputMode="numeric" className={inputCls + ' font-mono'} placeholder="R$ 0,00"
+                      value={formData.renda != null ? (formData.renda / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}
+                      onChange={e => {
+                        const num = e.target.value.replace(/\D/g, '');
+                        fd({ renda: num ? parseInt(num, 10) : undefined });
+                      }} />
+                  </div>
                   <div><label className={labelCls}>Canal de Venda</label>
                     <select className={inputCls} value={formData.canalVenda || ''} onChange={e => fd({ canalVenda: e.target.value })}>
                       <option value="">Selecione</option><option>WhatsApp</option><option>Instagram</option><option>Indicação</option><option>Site</option><option>Presencial</option><option>Outro</option>
