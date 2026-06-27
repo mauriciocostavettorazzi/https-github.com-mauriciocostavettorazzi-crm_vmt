@@ -251,6 +251,7 @@ export function Pessoas({ data, updateData }: any) {
   const [familiaSearch, setFamiliaSearch] = useState('');
   const [uploading, setUploading] = useState(false);
   const [pessoaToDelete, setPessoaToDelete] = useState<Pessoa | null>(null);
+  const [viewingPessoa, setViewingPessoa] = useState<Pessoa | null>(null);
 
   const fd = (patch: Partial<typeof formData>) => setFormData(f => ({ ...f, ...patch }));
 
@@ -453,7 +454,7 @@ export function Pessoas({ data, updateData }: any) {
               const inverseIds = pessoas.filter(x => (x.familia || []).some((f: any) => (typeof f === 'string' ? f : f.id) === p.id)).map(x => x.id);
               const familiaCount = [...new Set([...myFamiliaIds, ...inverseIds])].length;
               return (
-                <tr key={p.id} onClick={() => openEdit(p)} className="border-b border-border hover:bg-surface-alt cursor-pointer transition-colors">
+                <tr key={p.id} onClick={() => setViewingPessoa(p)} className="border-b border-border hover:bg-surface-alt cursor-pointer transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${p.ativo ? 'bg-[#1D9E75]/20 text-emerald-400' : 'bg-surface-alt text-muted'}`}>
@@ -613,7 +614,7 @@ export function Pessoas({ data, updateData }: any) {
                           className="appearance-none h-full pl-2 pr-6 py-2 text-sm bg-surface-alt border border-border-hover rounded-l-lg text-primary focus:outline-none focus:border-[#1D9E75] cursor-pointer"
                           style={{ minWidth: 72 }}>
                           {DDI_LIST.map(d => (
-                            <option key={d.code + d.label} value={d.code}>{d.flag} {d.code}</option>
+                            <option key={d.code + d.label} value={d.code}>{d.code} {d.label}</option>
                           ))}
                         </select>
                         <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
@@ -707,7 +708,7 @@ export function Pessoas({ data, updateData }: any) {
                         <label className={labelCls}>Nacionalidade</label>
                         <select className={inputCls} value={formData.nacionalidade || ''} onChange={e => fd({ nacionalidade: e.target.value })}>
                           <option value="">Selecione...</option>
-                          {COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}
+                          {COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                         </select>
                       </div>
                       <div>
@@ -754,7 +755,7 @@ export function Pessoas({ data, updateData }: any) {
                                   <div>
                                     <label className={labelCls}>País Emissor</label>
                                     <select className={inputCls} value={pp.pais} onChange={e => updatePP({ pais: e.target.value })}>
-                                      {PAIS_LIST.map(p => <option key={p.name} value={p.name}>{p.flag} {p.name}</option>)}
+                                      {PAIS_LIST.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
                                     </select>
                                   </div>
                                   <div><label className={labelCls}>Emissão</label><input type="date" className={inputCls} value={pp.emissao} onChange={e => updatePP({ emissao: e.target.value })} /></div>
@@ -958,6 +959,169 @@ export function Pessoas({ data, updateData }: any) {
           </div>
         </div>
       )}
+
+      {/* ── Overview modal (read-only) ── */}
+      {viewingPessoa && (() => {
+        const vp = viewingPessoa;
+        const alertColor = (val?: string) => {
+          if (!val) return null;
+          const diff = (new Date(val).getTime() - Date.now()) / 86400000;
+          return diff < 0 ? 'text-red-400' : diff < 180 ? 'text-amber-400' : 'text-emerald-400';
+        };
+        const myFamIds = (vp.familia || []).map((f: any) => typeof f === 'string' ? f : f.id);
+        const invIds = pessoas.filter(x => (x.familia || []).some((f: any) => (typeof f === 'string' ? f : f.id) === vp.id)).map(x => x.id);
+        const familiaCount = [...new Set([...myFamIds, ...invIds])].length;
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/70 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-xl border border-border flex flex-col max-h-[88vh]">
+              {/* Header */}
+              <div className="p-5 bg-surface-alt rounded-t-2xl border-b border-border shrink-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black shrink-0 ${vp.ativo ? 'bg-[#1D9E75]/20 text-emerald-400' : 'bg-surface-hover text-muted'}`}>
+                      {vp.nome.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-primary uppercase tracking-wide">{vp.nome}</h3>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {vp.tipo.map(t => (
+                          <span key={t} className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${TIPO_COLOR[t]}`}>{t}</span>
+                        ))}
+                        <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${vp.pessoaJuridica ? 'bg-violet-900/30 text-violet-300 border-violet-700' : 'bg-sky-900/30 text-sky-300 border-sky-700'}`}>
+                          {vp.pessoaJuridica ? 'PJ' : 'PF'}
+                        </span>
+                        {!vp.ativo && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded border bg-red-900/30 text-red-400 border-red-700">Inativo</span>}
+                      </div>
+                      {(vp.rating ?? 0) > 0 && (
+                        <div className="flex gap-0.5 mt-1">
+                          {[1,2,3,4,5].map(i => <Star key={i} size={10} className={i <= (vp.rating ?? 0) ? 'fill-amber-400 text-amber-400' : 'text-border'} />)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button onClick={() => setViewingPessoa(null)} className="p-1.5 hover:bg-surface-hover rounded-full shrink-0">
+                    <X size={18} className="text-muted" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="overflow-y-auto flex-1 p-5 space-y-4">
+                {/* Contato */}
+                <div className="grid grid-cols-2 gap-3">
+                  {vp.telefone && (
+                    <div className="bg-surface-alt rounded-xl p-3 border border-border">
+                      <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-0.5">Telefone</p>
+                      <p className="text-sm font-bold text-primary font-mono">{vp.ddi && vp.ddi !== '+55' ? vp.ddi + ' ' : ''}{vp.telefone}</p>
+                    </div>
+                  )}
+                  {vp.email && (
+                    <div className="bg-surface-alt rounded-xl p-3 border border-border">
+                      <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-0.5">E-mail</p>
+                      <p className="text-sm text-primary truncate">{vp.email}</p>
+                    </div>
+                  )}
+                  {vp.documento && (
+                    <div className="bg-surface-alt rounded-xl p-3 border border-border">
+                      <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-0.5">{vp.pessoaJuridica ? 'CNPJ' : 'CPF'}</p>
+                      <p className="text-sm font-mono text-primary">{vp.documento}</p>
+                    </div>
+                  )}
+                  {vp.rg && !vp.pessoaJuridica && (
+                    <div className="bg-surface-alt rounded-xl p-3 border border-border">
+                      <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-0.5">RG</p>
+                      <p className="text-sm font-mono text-primary">{vp.rg}{vp.orgaoEmissorRg ? ` · ${vp.orgaoEmissorRg}` : ''}</p>
+                    </div>
+                  )}
+                  {vp.nacionalidade && (
+                    <div className="bg-surface-alt rounded-xl p-3 border border-border">
+                      <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-0.5">Nacionalidade</p>
+                      <p className="text-sm text-primary">{vp.nacionalidade}</p>
+                    </div>
+                  )}
+                  {vp.dataNascimento && (
+                    <div className="bg-surface-alt rounded-xl p-3 border border-border">
+                      <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-0.5">Data de Nascimento</p>
+                      <p className="text-sm text-primary">{new Date(vp.dataNascimento + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Passaportes */}
+                {(vp.passaportes || []).length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-2">Passaportes</p>
+                    <div className="space-y-2">
+                      {(vp.passaportes || []).map((pp: PassaporteItem, i: number) => {
+                        const col = alertColor(pp.validade);
+                        return (
+                          <div key={pp.id} className="flex items-center justify-between bg-surface-alt border border-border rounded-xl px-4 py-2.5">
+                            <div>
+                              <p className="text-xs font-bold text-muted uppercase tracking-wider">Passaporte {i + 1} · {pp.pais}</p>
+                              <p className="text-sm font-mono font-bold text-primary">{pp.numero}</p>
+                            </div>
+                            {pp.validade && (
+                              <div className="text-right">
+                                <p className="text-[10px] text-placeholder">Validade</p>
+                                <p className={`text-xs font-bold ${col || 'text-primary'}`}>{new Date(pp.validade + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Endereço */}
+                {(vp.cidade || vp.estado) && (
+                  <div className="bg-surface-alt rounded-xl p-3 border border-border">
+                    <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-0.5">Localização</p>
+                    <p className="text-sm text-primary">{[vp.bairro, vp.cidade, vp.estado, vp.pais].filter(Boolean).join(' · ')}</p>
+                  </div>
+                )}
+
+                {/* Família */}
+                {familiaCount > 0 && (
+                  <div className="bg-surface-alt rounded-xl p-3 border border-border">
+                    <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-0.5">Círculo Familiar</p>
+                    <p className="text-sm text-sky-400 font-bold">{familiaCount} membro{familiaCount > 1 ? 's' : ''} vinculado{familiaCount > 1 ? 's' : ''}</p>
+                  </div>
+                )}
+
+                {/* Observações */}
+                {vp.observacoes && (
+                  <div className="bg-surface-alt rounded-xl p-3 border border-border">
+                    <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-1">Observações</p>
+                    <p className="text-sm text-muted whitespace-pre-wrap">{vp.observacoes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-border bg-surface-alt rounded-b-2xl shrink-0 flex justify-between items-center gap-3">
+                {vp.telefone && (
+                  <a href={`https://wa.me/55${vp.telefone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-900/30 text-emerald-400 border border-emerald-700 text-xs font-bold hover:bg-emerald-900/50 transition-colors">
+                    WhatsApp
+                  </a>
+                )}
+                <div className="flex gap-2 ml-auto">
+                  <button onClick={() => setViewingPessoa(null)}
+                    className="px-4 py-2 border border-border rounded-xl text-muted font-bold text-sm hover:bg-surface-hover">
+                    Fechar
+                  </button>
+                  <button onClick={() => { setViewingPessoa(null); openEdit(vp); }}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#1D9E75] text-white rounded-xl font-bold text-sm hover:brightness-110">
+                    <Edit size={14} /> Editar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Delete confirm */}
       {pessoaToDelete && (
