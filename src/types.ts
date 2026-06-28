@@ -246,7 +246,10 @@ export type ContaReceber = {
   cliente: string;
   valor: number;
   vencimento: string;
-  status: 'Pendente' | 'Recebido' | 'Atrasado';
+  status: 'Pendente' | 'Recebido' | 'Atrasado' | 'Parcial';
+  dataRecebimento?: string;
+  valorRecebido?: number;   // quanto foi abatido nesta baixa
+  parcelaRef?: string;      // id da conta original (para rastrear histórico de abatimentos)
 };
 
 export type ContaPagar = {
