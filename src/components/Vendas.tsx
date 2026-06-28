@@ -491,7 +491,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                   <select required className="w-full border border-border-hover rounded-md p-2" 
                     value={formData.cliente} onChange={e => setFormData({...formData, cliente: e.target.value})}>
                     <option value="">Selecione um cliente...</option>
-                {(data.pessoas || []).filter((p: any) => p.tipo?.includes('Cliente') || p.tipo?.includes('Passageiro')).map((p: any) => (
+                {(data.pessoas || []).filter((p: any) => p.tipo?.includes('Cliente')).map((p: any) => (
                   <option key={p.id} value={p.nome}>{p.nome}{p.documento ? ` - ${p.documento}` : ''}</option>
                 ))}
               </select>
