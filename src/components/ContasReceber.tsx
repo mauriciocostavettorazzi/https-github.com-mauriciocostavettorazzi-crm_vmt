@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatCurrency, calculateStatusAtrasado, parseMonetaryValue, formatMonetaryInput } from '../utils';
-import { CheckCircle, Search, Trash2, CreditCard } from 'lucide-react';
+import { CheckCircle, Search, Trash2, CreditCard, History, Pencil } from 'lucide-react';
 import { toast } from '../toast';
 import { VendaOverviewModal } from './VendaOverviewModal';
 
@@ -21,6 +21,11 @@ export function ContasReceber({ data, updateData }: any) {
   const [dateToReceive, setDateToReceive] = useState(new Date().toISOString().substring(0, 10));
   const [valorRecebidoInput, setValorRecebidoInput] = useState('');
   const [contaToDelete, setContaToDelete] = useState<any>(null);
+  // Gerenciar pagamentos
+  const [managingConta, setManagingConta] = useState<any>(null);
+  const [editingPgtoIdx, setEditingPgtoIdx] = useState<number | null>(null);
+  const [editPgtoData, setEditPgtoData] = useState('');
+  const [editPgtoValor, setEditPgtoValor] = useState('');
 
   const confirmDelete = () => {
     if (!contaToDelete) return;
@@ -82,6 +87,57 @@ export function ContasReceber({ data, updateData }: any) {
       ? `Abatimento de ${formatCurrency(valorRecebido)} registrado. Saldo restante: ${formatCurrency(saldo)}`
       : 'Título baixado como recebido!');
     setContaToReceive(null);
+  };
+
+  // Abre modal de gerenciamento de pagamentos
+  const openManage = (c: any) => {
+    // Migra campo legado se necessário
+    const conta = { ...c };
+    if (!conta.pagamentos?.length && conta.valorRecebido) {
+      conta.pagamentos = [{ data: conta.dataRecebimento || new Date().toISOString().substring(0,10), valor: conta.valorRecebido }];
+    }
+    setManagingConta(conta);
+    setEditingPgtoIdx(null);
+  };
+
+  const saveManage = (novosPagamentos: any[]) => {
+    const total = novosPagamentos.reduce((s: number, p: any) => s + p.valor, 0);
+    const saldo = Math.max(0, managingConta.valor - total);
+    const novoStatus = novosPagamentos.length === 0 ? 'Pendente' : saldo <= 0.009 ? 'Recebido' : 'Parcial';
+    const contasReceber = data.contasReceber
+      .filter((c: any) => c.parcelaRef !== managingConta.id) // remove duplicatas legadas
+      .map((c: any) =>
+        c.id === managingConta.id
+          ? {
+              ...c,
+              pagamentos: novosPagamentos,
+              valorRecebido: undefined,
+              parcelaRef: undefined,
+              status: novoStatus,
+              dataRecebimento: novoStatus === 'Recebido' ? novosPagamentos[novosPagamentos.length - 1]?.data : undefined,
+            }
+          : c
+      );
+    updateData({ contasReceber });
+    setManagingConta((prev: any) => ({ ...prev, pagamentos: novosPagamentos, status: novoStatus }));
+  };
+
+  const deletePgto = (idx: number) => {
+    const novos = (managingConta.pagamentos || []).filter((_: any, i: number) => i !== idx);
+    saveManage(novos);
+    if (editingPgtoIdx === idx) setEditingPgtoIdx(null);
+    toast('Pagamento removido.', 'info');
+  };
+
+  const saveEditPgto = (idx: number) => {
+    const valor = parseMonetaryValue(editPgtoValor);
+    if (valor <= 0 || !editPgtoData) return;
+    const novos = (managingConta.pagamentos || []).map((p: any, i: number) =>
+      i === idx ? { data: editPgtoData, valor } : p
+    );
+    saveManage(novos);
+    setEditingPgtoIdx(null);
+    toast('Pagamento atualizado.');
   };
 
   const contasFiltradas = data.contasReceber.filter((c: any) => {
@@ -216,11 +272,18 @@ export function ContasReceber({ data, updateData }: any) {
                       {c.status !== 'Recebido' && c.status !== 'Cancelado' && (
                         <button onClick={() => openBaixar(c)}
                           className="bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50 flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded"
-                          title="Baixar / Abater valor">
+                          title="Registrar pagamento">
                           <CheckCircle size={14} /> Baixar
                         </button>
                       )}
-                      {c.status === 'Recebido' && <span className="text-[10px] uppercase font-black text-secondary tracking-widest text-center min-w-[70px]">Recebido <br/><span className="text-placeholder font-mono tracking-tighter">{c.dataRecebimento?.split('-').reverse().join('/')}</span></span>}
+                      {(c.status === 'Parcial' || c.status === 'Recebido' || c.valorRecebido) && (
+                        <button onClick={() => openManage(c)}
+                          className="bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded"
+                          title="Ver / editar pagamentos">
+                          <History size={14} /> Pgtos
+                        </button>
+                      )}
+                      {c.status === 'Recebido' && !c.valorRecebido && !(c.pagamentos?.length) && <span className="text-[10px] uppercase font-black text-secondary tracking-widest text-center min-w-[70px]">Recebido <br/><span className="text-placeholder font-mono tracking-tighter">{c.dataRecebimento?.split('-').reverse().join('/')}</span></span>}
                       <button onClick={(e) => { e.stopPropagation(); setContaToDelete(c); }} className="bg-red-900/30 text-red-400 hover:bg-red-900/50 p-1.5 rounded tooltip" title="Excluir conta">
                         <Trash2 size={14} />
                       </button>
@@ -236,8 +299,84 @@ export function ContasReceber({ data, updateData }: any) {
         </div>
       </div>
 
+      {/* Modal gerenciar pagamentos */}
+      {managingConta && (() => {
+        const pagamentos: any[] = managingConta.pagamentos || [];
+        const totalPagoM = pagamentos.reduce((s: number, p: any) => s + p.valor, 0);
+        const saldoM = Math.max(0, managingConta.valor - totalPagoM);
+        return (
+          <div className="fixed inset-0 bg-slate-900/70 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border overflow-hidden">
+              <div className="p-4 border-b border-border bg-surface-alt flex justify-between items-center">
+                <h3 className="text-sm font-black text-primary uppercase tracking-wider flex items-center gap-2">
+                  <History size={16} className="text-blue-400" /> Histórico de Pagamentos
+                </h3>
+                <button onClick={() => { setManagingConta(null); setEditingPgtoIdx(null); }} className="text-placeholder hover:text-primary text-xl leading-none">&times;</button>
+              </div>
+              <div className="p-5 space-y-4">
+                {/* Resumo */}
+                <div className="bg-surface-alt rounded-xl p-3 border border-border text-xs space-y-1">
+                  <div className="flex justify-between"><span className="text-muted">Cliente</span><span className="font-bold text-primary">{managingConta.cliente}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">Valor original</span><span className="font-bold text-primary">{formatCurrency(managingConta.valor)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">Total recebido</span><span className="font-bold text-emerald-400">{formatCurrency(totalPagoM)}</span></div>
+                  <div className="flex justify-between border-t border-border pt-1 mt-1"><span className="text-muted font-bold">Saldo em aberto</span><span className={`font-black ${saldoM > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{formatCurrency(saldoM)}</span></div>
+                </div>
+
+                {/* Lista de pagamentos */}
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {pagamentos.length === 0 && <p className="text-xs text-muted text-center py-4">Nenhum pagamento registrado.</p>}
+                  {pagamentos.map((p: any, i: number) => (
+                    <div key={i} className="bg-surface-alt border border-border rounded-lg overflow-hidden">
+                      {editingPgtoIdx === i ? (
+                        <div className="p-3 space-y-2">
+                          <div className="flex gap-2">
+                            <input type="date" value={editPgtoData} onChange={e => setEditPgtoData(e.target.value)}
+                              className="flex-1 border border-border-hover rounded bg-surface text-primary p-1.5 text-xs focus:outline-none focus:border-[#1D9E75]" />
+                            <input type="text" inputMode="numeric" value={editPgtoValor}
+                              onChange={e => setEditPgtoValor(formatMonetaryInput(e.target.value))}
+                              className="flex-1 border border-border-hover rounded bg-surface text-primary p-1.5 text-xs font-mono focus:outline-none focus:border-[#1D9E75]" />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={() => setEditingPgtoIdx(null)} className="text-[10px] px-3 py-1 border border-border rounded text-muted hover:bg-surface">Cancelar</button>
+                            <button onClick={() => saveEditPgto(i)} className="text-[10px] px-3 py-1 bg-[#1D9E75] text-white rounded font-bold hover:brightness-110">Salvar</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between px-3 py-2.5">
+                          <div>
+                            <p className="text-xs font-bold text-primary">{formatCurrency(p.valor)}</p>
+                            <p className="text-[10px] text-muted">{new Date(p.data).toLocaleDateString('pt-BR')}</p>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <button onClick={() => { setEditingPgtoIdx(i); setEditPgtoData(p.data); setEditPgtoValor(formatMonetaryInput(p.valor)); }}
+                              className="p-1.5 bg-surface hover:bg-surface-hover rounded text-blue-400" title="Editar">
+                              <Pencil size={13} />
+                            </button>
+                            <button onClick={() => deletePgto(i)}
+                              className="p-1.5 bg-surface hover:bg-red-900/40 rounded text-red-400" title="Remover pagamento">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button onClick={() => { setManagingConta(null); setEditingPgtoIdx(null); }}
+                    className="px-4 py-2 border border-border rounded-lg text-muted font-bold hover:bg-surface-alt text-sm">
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {selectedOverviewVenda && (
-        <VendaOverviewModal 
+        <VendaOverviewModal
            venda={selectedOverviewVenda} 
            data={data} 
            onClose={() => setSelectedOverviewVenda(null)} 
