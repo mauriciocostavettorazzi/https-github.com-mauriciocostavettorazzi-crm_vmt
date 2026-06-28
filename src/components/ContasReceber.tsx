@@ -155,8 +155,13 @@ export function ContasReceber({ data, updateData }: any) {
     return isStatusMatch;
   });
 
-  const aReceber = data.contasReceber.filter((c:any) => ['Em dia', 'Pgto do dia'].includes(calculateStatusAtrasado(c.vencimento, c.status)));
-  const emAtraso = data.contasReceber.filter((c:any) => calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado');
+  const isAtrasado = (c: any) =>
+    calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado' ||
+    (c.status === 'Parcial' && calculateStatusAtrasado(c.vencimento, 'Pendente') === 'Atrasado');
+
+  const aReceber = data.contasReceber.filter((c:any) =>
+    !isAtrasado(c) && ['Em dia', 'Pgto do dia', 'Parcial'].includes(calculateStatusAtrasado(c.vencimento, c.status)) && c.status !== 'Recebido');
+  const emAtraso = data.contasReceber.filter((c:any) => isAtrasado(c));
   const recebidosMes = data.contasReceber.filter((c:any) => c.status === 'Recebido');
 
   const totalAReceber = aReceber.reduce((acc:any, c:any) => acc + saldoRestante(c), 0);
