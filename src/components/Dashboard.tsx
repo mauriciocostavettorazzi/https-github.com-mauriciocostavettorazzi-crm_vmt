@@ -163,15 +163,21 @@ export function Dashboard({ data }: any) {
     return items;
   }, [data]);
 
-  // Top destinos
+  // Top destinos — usa venda.destinos[] como fonte primária
   const topDestinos = useMemo(() => {
     const map: Record<string, number> = {};
-    (data.voos || []).filter((v: any) => v.status !== 'Cancelado').forEach((v: any) => {
-      if (v.destino) map[v.destino] = (map[v.destino] || 0) + 1;
+    (data.vendas || []).forEach((v: any) => {
+      if (v.status === 'Cancelado') return;
+      (v.destinos || []).forEach((d: string) => {
+        if (d) map[d] = (map[d] || 0) + 1;
+      });
     });
-    (data.cotacoes || []).filter((c: any) => c.destino).forEach((c: any) => {
-      map[c.destino] = (map[c.destino] || 0) + 1;
-    });
+    // fallback legado: voos com IATA destino, se nenhuma venda tem destinos[]
+    if (Object.keys(map).length === 0) {
+      (data.voos || []).filter((v: any) => v.status !== 'Cancelado').forEach((v: any) => {
+        if (v.destino) map[v.destino] = (map[v.destino] || 0) + 1;
+      });
+    }
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [data]);
   const maxDestino = topDestinos[0]?.[1] || 1;

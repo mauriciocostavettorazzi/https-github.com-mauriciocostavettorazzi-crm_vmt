@@ -1,4 +1,50 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+
+// ── Lista de destinos para autocomplete ──────────────────────────────────────
+const DESTINOS_SUGESTOES = [
+  // América do Sul
+  'Buenos Aires, Argentina','Bariloche, Argentina','Santiago, Chile','Atacama, Chile',
+  'Lima, Peru','Machu Picchu, Peru','Cusco, Peru','Cartagena, Colômbia','Bogotá, Colômbia',
+  'Montevidéu, Uruguai','Punta del Este, Uruguai','Assunção, Paraguai',
+  'Santa Cruz, Bolívia','Salar de Uyuni, Bolívia','Quito, Equador','Galápagos, Equador',
+  'Caracas, Venezuela','Rio de Janeiro, Brasil','São Paulo, Brasil','Salvador, Brasil',
+  'Fortaleza, Brasil','Recife, Brasil','Manaus, Brasil','Foz do Iguaçu, Brasil',
+  'Florianópolis, Brasil','Porto Alegre, Brasil','Brasília, Brasil','Natal, Brasil',
+  'Maceió, Brasil','Porto Seguro, Brasil','Bonito, Brasil',
+  // América Central e Caribe
+  'Cancún, México','Cidade do México, México','Los Cabos, México','Playa del Carmen, México',
+  'Havana, Cuba','Punta Cana, República Dominicana','Aruba','Curaçao',
+  'San José, Costa Rica','Panamá City, Panamá','Jamaica','Bahamas',
+  // América do Norte
+  'Nova York, EUA','Miami, EUA','Orlando, EUA','Las Vegas, EUA','Los Angeles, EUA',
+  'San Francisco, EUA','Chicago, EUA','Washington D.C., EUA','Boston, EUA',
+  'Toronto, Canadá','Vancouver, Canadá','Montreal, Canadá',
+  // Europa
+  'Lisboa, Portugal','Porto, Portugal','Algarve, Portugal',
+  'Madrid, Espanha','Barcelona, Espanha','Sevilha, Espanha','Ibiza, Espanha',
+  'Paris, França','Nice, França','Lyon, França',
+  'Roma, Itália','Milão, Itália','Veneza, Itália','Florença, Itália','Amalfi, Itália',
+  'Londres, Reino Unido','Edimburgo, Reino Unido',
+  'Amsterdã, Holanda','Berlim, Alemanha','Munique, Alemanha','Frankfurt, Alemanha',
+  'Viena, Áustria','Zurique, Suíça','Genebra, Suíça','Interlaken, Suíça',
+  'Praga, República Tcheca','Budapeste, Hungria','Varsóvia, Polônia',
+  'Atenas, Grécia','Santorini, Grécia','Mykonos, Grécia','Creta, Grécia',
+  'Istambul, Turquia','Antalya, Turquia',
+  'Moscou, Rússia','São Petersburgo, Rússia',
+  'Estocolmo, Suécia','Oslo, Noruega','Copenhague, Dinamarca','Helsínque, Finlândia',
+  'Dublin, Irlanda','Bruxelas, Bélgica',
+  // Oriente Médio e África
+  'Dubai, Emirados Árabes','Abu Dhabi, Emirados Árabes',
+  'Doha, Catar','Tel Aviv, Israel','Jerusalém, Israel',
+  'Cairo, Egito','Marrakech, Marrocos','Cidade do Cabo, África do Sul',
+  // Ásia e Oceania
+  'Tóquio, Japão','Osaka, Japão','Kyoto, Japão',
+  'Seul, Coreia do Sul','Pequim, China','Xangai, China','Hong Kong',
+  'Cingapura','Bangkok, Tailândia','Phuket, Tailândia','Bali, Indonésia',
+  'Kuala Lumpur, Malásia','Manila, Filipinas','Mumbai, Índia','Nova Déli, Índia',
+  'Maldivas','Sri Lanka',
+  'Sydney, Austrália','Melbourne, Austrália','Auckland, Nova Zelândia',
+];
 import { formatCurrency, maskCpfCnpj, generateId, parseMonetaryValue, formatMonetaryInput } from '../utils';
 import { PlusCircle, Search, Trash2, Edit, XCircle, X, Filter, ShoppingCart, BedDouble, Users, CheckSquare, Square, Shield, Paperclip, FileUp, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -715,34 +761,60 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                     </h5>
                     <span className="text-[10px] text-placeholder">Usado no Dashboard como referência</span>
                   </div>
-                  <div className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      placeholder="Ex: Paris, França / Cancún / Lisboa..."
-                      className="flex-1 border border-border-hover rounded text-sm p-1.5"
-                      value={formData.destinoInput || ''}
-                      onChange={e => setFormData({...formData, destinoInput: e.target.value})}
-                      onKeyDown={e => {
-                        if ((e.key === 'Enter' || e.key === ',') && formData.destinoInput?.trim()) {
-                          e.preventDefault();
-                          const novo = formData.destinoInput.trim().replace(/,$/, '');
-                          if (novo && !(formData.destinos || []).includes(novo)) {
-                            setFormData({...formData, destinos: [...(formData.destinos || []), novo], destinoInput: ''});
-                          }
-                        }
-                      }}
-                    />
-                    <button type="button"
-                      onClick={() => {
-                        const novo = (formData.destinoInput || '').trim();
-                        if (novo && !(formData.destinos || []).includes(novo)) {
-                          setFormData({...formData, destinos: [...(formData.destinos || []), novo], destinoInput: ''});
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-[#1D9E75] text-white rounded text-xs font-bold hover:brightness-110">
-                      + Adicionar
-                    </button>
-                  </div>
+                  {/* Input com autocomplete */}
+                  {(() => {
+                    const q = (formData.destinoInput || '').trim().toLowerCase();
+                    const sugestoes = q.length >= 2
+                      ? DESTINOS_SUGESTOES.filter(d =>
+                          d.toLowerCase().includes(q) &&
+                          !(formData.destinos || []).includes(d)
+                        ).slice(0, 8)
+                      : [];
+                    const addDestino = (val: string) => {
+                      const novo = val.trim();
+                      if (novo && !(formData.destinos || []).includes(novo)) {
+                        setFormData({...formData, destinos: [...(formData.destinos || []), novo], destinoInput: ''});
+                      }
+                    };
+                    return (
+                      <div className="relative flex gap-2 mb-2">
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            placeholder="Ex: Paris, França / Cancún / Lisboa..."
+                            className="w-full border border-border-hover rounded text-sm p-1.5"
+                            value={formData.destinoInput || ''}
+                            onChange={e => setFormData({...formData, destinoInput: e.target.value})}
+                            onKeyDown={e => {
+                              if ((e.key === 'Enter' || e.key === ',') && formData.destinoInput?.trim()) {
+                                e.preventDefault();
+                                addDestino(formData.destinoInput.replace(/,$/, ''));
+                              }
+                            }}
+                            autoComplete="off"
+                          />
+                          {sugestoes.length > 0 && (
+                            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-xl overflow-hidden">
+                              {sugestoes.map(s => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onMouseDown={e => { e.preventDefault(); addDestino(s); }}
+                                  className="w-full text-left px-3 py-2 text-xs text-primary hover:bg-surface-alt flex items-center gap-2 border-b border-border last:border-0">
+                                  🌍 {s}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <button type="button"
+                          onClick={() => addDestino(formData.destinoInput || '')}
+                          className="px-3 py-1.5 bg-[#1D9E75] text-white rounded text-xs font-bold hover:brightness-110 shrink-0">
+                          + Adicionar
+                        </button>
+                      </div>
+                    );
+                  })()}
                   <div className="flex flex-wrap gap-1.5">
                     {(formData.destinos || []).map((d: string) => (
                       <span key={d} className="flex items-center gap-1 bg-surface-raised border border-border text-xs text-primary px-2 py-1 rounded-full">
