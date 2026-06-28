@@ -132,6 +132,10 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
     passageiros: [] as { pessoaId: string; nome: string }[],
     passageirosSearch: '',
 
+    // Destinos
+    destinos: [] as string[],
+    destinoInput: '',
+
     // Tarefas
     tarefas: [] as { id: string; titulo: string; feita: boolean; prazo?: string; criadoEm: string }[],
     novaTarefa: '',
@@ -178,6 +182,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
       statusV: editingId ? data.vendas.find((v:any) => v.id === vendaId)?.statusV : false,
       hospedagens: formData.incluirHospedagem ? formData.hospedagens.filter((h: any) => h.nome) : [],
       passageiros: formData.passageiros || [],
+      destinos: formData.destinos || [],
       tarefas: formData.tarefas || [],
       seguro: formData.incluirSeguro && formData.seguro.seguradora ? { ...formData.seguro, valor: formData.seguro.valor ? parseMonetaryValue(formData.seguro.valor) : 0 } : undefined,
       documentos: formData.documentos || [],
@@ -305,6 +310,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
        passageiros: venda.passageiros || [],
        passageirosSearch: '',
+       destinos: venda.destinos || [],
+       destinoInput: '',
        tarefas: venda.tarefas || [],
        novaTarefa: '',
        novaTarefaPrazo: '',
@@ -699,6 +706,60 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                  )}
               </div>
 
+              {/* ── Destinos ── mostrar para Passagem Aérea, Hotel, Pacote */}
+              {['Passagem Aérea', 'Hotel', 'Pacote'].includes(formData.tipo) && (
+                <div className="col-span-1 md:col-span-2 border-t border-border pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h5 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
+                      🌍 Destinos
+                    </h5>
+                    <span className="text-[10px] text-placeholder">Usado no Dashboard como referência</span>
+                  </div>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Ex: Paris, França / Cancún / Lisboa..."
+                      className="flex-1 border border-border-hover rounded text-sm p-1.5"
+                      value={formData.destinoInput || ''}
+                      onChange={e => setFormData({...formData, destinoInput: e.target.value})}
+                      onKeyDown={e => {
+                        if ((e.key === 'Enter' || e.key === ',') && formData.destinoInput?.trim()) {
+                          e.preventDefault();
+                          const novo = formData.destinoInput.trim().replace(/,$/, '');
+                          if (novo && !(formData.destinos || []).includes(novo)) {
+                            setFormData({...formData, destinos: [...(formData.destinos || []), novo], destinoInput: ''});
+                          }
+                        }
+                      }}
+                    />
+                    <button type="button"
+                      onClick={() => {
+                        const novo = (formData.destinoInput || '').trim();
+                        if (novo && !(formData.destinos || []).includes(novo)) {
+                          setFormData({...formData, destinos: [...(formData.destinos || []), novo], destinoInput: ''});
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-[#1D9E75] text-white rounded text-xs font-bold hover:brightness-110">
+                      + Adicionar
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(formData.destinos || []).map((d: string) => (
+                      <span key={d} className="flex items-center gap-1 bg-surface-raised border border-border text-xs text-primary px-2 py-1 rounded-full">
+                        {d}
+                        <button type="button" onClick={() => setFormData({...formData, destinos: (formData.destinos || []).filter((x: string) => x !== d)})}
+                          className="text-muted hover:text-red-400 ml-0.5">
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                    {(formData.destinos || []).length === 0 && (
+                      <span className="text-xs text-placeholder">Nenhum destino adicionado. Digite e pressione Enter.</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Voos Emissao */}
               {formData.tipo === 'Passagem Aérea' && (
                 <div className="col-span-1 md:col-span-2 space-y-3 mt-2 border-t border-border pt-4">
@@ -745,13 +806,41 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                </h6>
                             </div>
                             <div className="col-span-2">
-                              <label className="block text-xs font-bold text-muted uppercase">Passageiros</label>
-                              <input required type="text" className="w-full border border-border-hover rounded text-sm p-1.5" 
-                                value={voo.passageiros} onChange={e => {
+                              <label className="block text-xs font-bold text-muted uppercase mb-1">Passageiros</label>
+                              {/* Tags dos selecionados */}
+                              <div className="flex flex-wrap gap-1 mb-1">
+                                {(voo.passageiros ? voo.passageiros.split(',').map((s: string) => s.trim()).filter(Boolean) : []).map((nome: string) => (
+                                  <span key={nome} className="flex items-center gap-1 bg-sky-900/30 border border-sky-700 text-sky-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    {nome}
+                                    <button type="button" onClick={() => {
+                                      const newVoos = [...formData.voosList];
+                                      const lista = newVoos[idx].passageiros.split(',').map((s: string) => s.trim()).filter((s: string) => s !== nome);
+                                      newVoos[idx].passageiros = lista.join(', ');
+                                      setFormData({...formData, voosList: newVoos});
+                                    }} className="hover:text-red-400"><X size={10}/></button>
+                                  </span>
+                                ))}
+                              </div>
+                              {/* Dropdown de seleção */}
+                              <select className="w-full border border-border-hover rounded text-sm p-1.5"
+                                value=""
+                                onChange={e => {
+                                  const nome = e.target.value;
+                                  if (!nome) return;
                                   const newVoos = [...formData.voosList];
-                                  newVoos[idx].passageiros = e.target.value;
-                                  setFormData({...formData, voosList: newVoos});
-                                }} placeholder="João Silva, Maria Silva..."/>
+                                  const atual = newVoos[idx].passageiros ? newVoos[idx].passageiros.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+                                  if (!atual.includes(nome)) {
+                                    newVoos[idx].passageiros = [...atual, nome].join(', ');
+                                    setFormData({...formData, voosList: newVoos});
+                                  }
+                                }}>
+                                <option value="">+ Adicionar passageiro...</option>
+                                {(data.pessoas || [])
+                                  .filter((p: any) => p.tipo?.includes('Passageiro') || p.tipo?.includes('Cliente'))
+                                  .map((p: any) => (
+                                    <option key={p.id} value={p.nome}>{p.nome}</option>
+                                  ))}
+                              </select>
                             </div>
                             <div>
                               <label className="block text-xs font-bold text-muted uppercase">Localizador PNR</label>

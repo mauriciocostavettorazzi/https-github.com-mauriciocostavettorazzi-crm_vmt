@@ -216,6 +216,7 @@ export type Venda = {
   hospedagens?: HospedagemItem[];
   // Novos campos
   passageiros?: { pessoaId: string; nome: string }[];
+  destinos?: string[];
   tarefas?: VendaTarefa[];
   seguro?: SeguroViagem;
   documentos?: PessoaDocumento[];
