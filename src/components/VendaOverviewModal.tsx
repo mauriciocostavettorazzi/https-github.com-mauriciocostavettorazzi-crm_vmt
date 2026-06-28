@@ -94,18 +94,45 @@ export function VendaOverviewModal({ venda, data, onClose }: VendaOverviewModalP
               <h4 className="text-[10px] font-black uppercase text-placeholder tracking-widest flex items-center gap-1 mb-3">Títulos a Receber (Cliente)</h4>
               <div className="space-y-2">
                  {contasReceber.length > 0 ? contasReceber.map((cr: any) => (
-                    <div key={cr.id} className="flex justify-between items-center bg-surface p-3 rounded-lg border border-border shadow-sm text-sm">
-                        <div className="flex flex-col">
-                            <span className="font-bold text-primary text-xs">Venc: {new Date(cr.vencimento).toLocaleDateString('pt-BR')}</span>
-                            <span className="text-[10px] text-muted uppercase">{cr.formaPagamento || 'N/A'}</span>
+                    <div key={cr.id} className={`bg-surface rounded-lg border shadow-sm text-sm overflow-hidden ${cr.status === 'Parcial' ? 'border-blue-800' : 'border-border'}`}>
+                        {/* linha principal */}
+                        <div className="flex justify-between items-center p-3">
+                            <div className="flex flex-col">
+                                <span className="font-bold text-primary text-xs">Venc: {new Date(cr.vencimento).toLocaleDateString('pt-BR')}</span>
+                                {cr.parcelaRef && <span className="text-[10px] text-amber-400 font-bold uppercase">Saldo restante</span>}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="font-black text-primary">{formatCurrency(cr.valor)}</span>
+                                <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-black tracking-wider leading-none
+                                    ${cr.status === 'Recebido' ? 'bg-emerald-900/40 text-emerald-400' :
+                                      cr.status === 'Parcial'  ? 'bg-blue-900/40 text-blue-400' :
+                                      cr.status === 'Atrasado' ? 'bg-red-900/40 text-red-400' :
+                                                                  'bg-amber-900/30 text-amber-400'}`}>
+                                    {cr.status}
+                                </span>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <span className="font-black text-primary">{formatCurrency(cr.valor)}</span>
-                            <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-black tracking-wider leading-none
-                                ${cr.status === 'Recebido' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                {cr.status}
-                            </span>
-                        </div>
+                        {/* histórico de abatimentos */}
+                        {cr.status === 'Parcial' && cr.valorRecebido != null && (
+                            <div className="px-3 pb-3 pt-0 border-t border-blue-900/40 space-y-1">
+                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mt-2 mb-1">Abatimento registrado</p>
+                                <div className="flex justify-between items-center bg-blue-900/10 rounded px-2 py-1.5">
+                                    <span className="text-[10px] text-muted">
+                                        {cr.dataRecebimento ? new Date(cr.dataRecebimento).toLocaleDateString('pt-BR') : '—'}
+                                    </span>
+                                    <span className="text-xs font-black text-emerald-400">+ {formatCurrency(cr.valorRecebido)}</span>
+                                </div>
+                                <div className="flex justify-between items-center px-2 pt-1">
+                                    <span className="text-[10px] text-muted">Saldo em aberto</span>
+                                    <span className="text-xs font-black text-amber-400">{formatCurrency(cr.valor - cr.valorRecebido)}</span>
+                                </div>
+                            </div>
+                        )}
+                        {cr.status === 'Recebido' && cr.dataRecebimento && (
+                            <div className="px-3 pb-2 pt-0 border-t border-emerald-900/30">
+                                <p className="text-[10px] text-emerald-400 font-bold mt-1.5">Recebido em {new Date(cr.dataRecebimento).toLocaleDateString('pt-BR')}</p>
+                            </div>
+                        )}
                     </div>
                  )) : <p className="text-xs text-placeholder">Nenhum título a receber atrelado.</p>}
               </div>
