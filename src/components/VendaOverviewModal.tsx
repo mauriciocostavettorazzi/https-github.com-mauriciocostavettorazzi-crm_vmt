@@ -1,6 +1,6 @@
 import React from 'react';
 import { Venda } from '../types';
-import { X, Plane, DollarSign, Calendar, MapPin, User, Hash } from 'lucide-react';
+import { X, Plane, DollarSign, Calendar, MapPin, User, Hash, Users } from 'lucide-react';
 import { formatCurrency, isCheckinLiberado, getCheckinUrl, maskPhone } from '../utils';
 
 interface VendaOverviewModalProps {
@@ -88,6 +88,28 @@ export function VendaOverviewModal({ venda, data, onClose }: VendaOverviewModalP
                   ))}
               </div>
            </div>
+
+           {/* Section: Passageiros da Viagem */}
+           {venda.passageiros && venda.passageiros.length > 0 && (
+             <div className="md:col-span-2">
+               <h4 className="text-[10px] font-black uppercase text-placeholder tracking-widest flex items-center gap-1 mb-3"><Users size={14}/> Passageiros da Viagem</h4>
+               <div className="flex flex-wrap gap-2">
+                 {venda.passageiros.map((p: any) => {
+                   const pessoa = (data.pessoas || []).find((ps: any) => ps.id === p.pessoaId);
+                   const pp = pessoa?.passaportes?.[0] || null;
+                   const passaporte = pp?.numero || pessoa?.passaporte || null;
+                   const validade = pp?.validade || pessoa?.passaporteValidade || null;
+                   return (
+                     <div key={p.pessoaId} className="bg-surface-alt border border-border rounded-xl px-4 py-3 flex flex-col gap-0.5 min-w-[180px]">
+                       <span className="text-xs font-black text-primary uppercase">{p.nome}</span>
+                       {passaporte && <span className="text-[10px] font-mono text-muted">Passaporte: <span className="text-primary">{passaporte}</span></span>}
+                       {validade && <span className="text-[10px] text-muted">Val: <span className={new Date(validade) < new Date() ? 'text-red-400 font-bold' : 'text-emerald-400'}>{new Date(validade).toLocaleDateString('pt-BR')}</span></span>}
+                     </div>
+                   );
+                 })}
+               </div>
+             </div>
+           )}
 
            {/* Section: Contas a Receber (Cliente) */}
            <div>
