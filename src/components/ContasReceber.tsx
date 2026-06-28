@@ -176,9 +176,16 @@ export function ContasReceber({ data, updateData }: any) {
                   <td className="px-4 py-3 font-bold text-primary whitespace-nowrap">{new Date(c.vencimento).toLocaleDateString('pt-BR')}</td>
                   <td className="px-4 py-3">
                     {c.status === 'Parcial' ? (
-                      <span className="px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider leading-none bg-blue-900/30 text-blue-400">
-                        Parcial
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className="px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider leading-none bg-blue-900/30 text-blue-400 w-fit">
+                          Parcial
+                        </span>
+                        {calculateStatusAtrasado(c.vencimento, 'Pendente') === 'Atrasado' && (
+                          <span className="px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider leading-none bg-red-900/30 text-red-500 w-fit">
+                            Atrasado
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className={`px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider leading-none
                         ${['Em dia', 'Pgto do dia'].includes(calculateStatusAtrasado(c.vencimento, c.status)) ? 'bg-amber-900/30 text-amber-500' :
