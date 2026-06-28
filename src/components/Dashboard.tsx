@@ -157,9 +157,19 @@ export function Dashboard({ data }: any) {
     });
     if (tarefasVencidas > 0) items.push({ tipo: 'error', label: `${tarefasVencidas} tarefa(s) vencida(s)`, sub: 'Verifique o checklist nas vendas.' });
     const atrasadosP = (data.contasPagar  || []).filter((c: any) => c.status === 'Atrasado').length;
-    const atrasadosR = (data.contasReceber || []).filter((c: any) => calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado').length;
     if (atrasadosP > 0) items.push({ tipo: 'error', label: `${atrasadosP} conta(s) a pagar em atraso`, sub: 'Verifique A Pagar.' });
-    if (atrasadosR > 0) items.push({ tipo: 'error', label: `${atrasadosR} conta(s) a receber em atraso`, sub: 'Verifique A Receber.' });
+    (data.contasReceber || [])
+      .filter((c: any) => calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado' ||
+        (c.status === 'Parcial' && calculateStatusAtrasado(c.vencimento, 'Pendente') === 'Atrasado'))
+      .forEach((c: any) => {
+        const dias = Math.floor((hoje.getTime() - new Date(c.vencimento + 'T12:00:00').getTime()) / 86400000);
+        const saldo = c.status === 'Parcial' && c.valorRecebido != null ? c.valor - c.valorRecebido : c.valor;
+        items.push({
+          tipo: 'error',
+          label: `A Receber em atraso — ${c.cliente}`,
+          sub: `${dias} dia${dias !== 1 ? 's' : ''} em atraso · Saldo: ${formatCurrency(saldo)}`,
+        });
+      });
     return items;
   }, [data]);
 
