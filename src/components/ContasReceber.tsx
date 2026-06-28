@@ -4,8 +4,12 @@ import { CheckCircle, Search, Trash2, CreditCard } from 'lucide-react';
 import { toast } from '../toast';
 import { VendaOverviewModal } from './VendaOverviewModal';
 
-const totalPago = (c: any): number =>
-  (c.pagamentos || []).reduce((s: number, p: any) => s + p.valor, 0);
+// Suporte a campo legado valorRecebido (antes de pagamentos[])
+const totalPago = (c: any): number => {
+  if ((c.pagamentos || []).length > 0)
+    return (c.pagamentos as any[]).reduce((s, p) => s + p.valor, 0);
+  return c.valorRecebido || 0;
+};
 const saldoRestante = (c: any): number =>
   Math.max(0, c.valor - totalPago(c));
 
@@ -37,22 +41,34 @@ export function ContasReceber({ data, updateData }: any) {
     const valorRecebido = parseMonetaryValue(valorRecebidoInput);
     if (valorRecebido <= 0) return;
 
+    // Migra campo legado valorRecebido → pagamentos[]
+    const pagamentosExistentes: any[] = contaToReceive.pagamentos?.length
+      ? contaToReceive.pagamentos
+      : contaToReceive.valorRecebido
+        ? [{ data: contaToReceive.dataRecebimento || dateToReceive, valor: contaToReceive.valorRecebido }]
+        : [];
+
     const novoPagamento = { data: dateToReceive, valor: valorRecebido };
-    const pagamentosAtualizados = [...(contaToReceive.pagamentos || []), novoPagamento];
+    const pagamentosAtualizados = [...pagamentosExistentes, novoPagamento];
     const totalPagoAtual = pagamentosAtualizados.reduce((s: number, p: any) => s + p.valor, 0);
     const saldo = Math.max(0, contaToReceive.valor - totalPagoAtual);
     const isParcial = saldo > 0.009;
 
-    const contasReceber = data.contasReceber.map((c: any) =>
-      c.id === contaToReceive.id
-        ? {
-            ...c,
-            pagamentos: pagamentosAtualizados,
-            status: isParcial ? 'Parcial' : 'Recebido',
-            dataRecebimento: isParcial ? undefined : dateToReceive,
-          }
-        : c
-    );
+    // Remove linhas duplicadas antigas (parcelaRef) ligadas a este título
+    const contasReceber = data.contasReceber
+      .filter((c: any) => c.parcelaRef !== contaToReceive.id)
+      .map((c: any) =>
+        c.id === contaToReceive.id
+          ? {
+              ...c,
+              pagamentos: pagamentosAtualizados,
+              valorRecebido: undefined,  // limpa campo legado
+              parcelaRef: undefined,
+              status: isParcial ? 'Parcial' : 'Recebido',
+              dataRecebimento: isParcial ? undefined : dateToReceive,
+            }
+          : c
+      );
 
     let updatedVendas = data.vendas;
     if (!isParcial && contaToReceive.vendaId) {
