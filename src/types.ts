@@ -240,16 +240,20 @@ export type Voo = {
   agendado?: boolean;
 };
 
+export type PagamentoConta = {
+  data: string;
+  valor: number;
+};
+
 export type ContaReceber = {
   id: string;
   vendaId: string;
   cliente: string;
-  valor: number;
+  valor: number;          // valor original do título
   vencimento: string;
   status: 'Pendente' | 'Recebido' | 'Atrasado' | 'Parcial';
   dataRecebimento?: string;
-  valorRecebido?: number;   // quanto foi abatido nesta baixa
-  parcelaRef?: string;      // id da conta original (para rastrear histórico de abatimentos)
+  pagamentos?: PagamentoConta[];  // histórico de abatimentos
 };
 
 export type ContaPagar = {

@@ -135,21 +135,25 @@ export function VendaOverviewModal({ venda, data, onClose }: VendaOverviewModalP
                             </div>
                         </div>
                         {/* histórico de abatimentos */}
-                        {cr.status === 'Parcial' && cr.valorRecebido != null && (
-                            <div className="px-3 pb-3 pt-0 border-t border-blue-900/40 space-y-1">
-                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mt-2 mb-1">Abatimento registrado</p>
-                                <div className="flex justify-between items-center bg-blue-900/10 rounded px-2 py-1.5">
-                                    <span className="text-[10px] text-muted">
-                                        {cr.dataRecebimento ? new Date(cr.dataRecebimento).toLocaleDateString('pt-BR') : '—'}
-                                    </span>
-                                    <span className="text-xs font-black text-emerald-400">+ {formatCurrency(cr.valorRecebido)}</span>
-                                </div>
+                        {cr.status === 'Parcial' && (cr.pagamentos || []).length > 0 && (() => {
+                            const pago = (cr.pagamentos || []).reduce((s: number, p: any) => s + p.valor, 0);
+                            const saldo = Math.max(0, cr.valor - pago);
+                            return (
+                              <div className="px-3 pb-3 pt-0 border-t border-blue-900/40 space-y-1">
+                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mt-2 mb-1">Histórico de abatimentos</p>
+                                {(cr.pagamentos || []).map((p: any, i: number) => (
+                                  <div key={i} className="flex justify-between items-center bg-blue-900/10 rounded px-2 py-1.5">
+                                    <span className="text-[10px] text-muted">{new Date(p.data).toLocaleDateString('pt-BR')}</span>
+                                    <span className="text-xs font-black text-emerald-400">+ {formatCurrency(p.valor)}</span>
+                                  </div>
+                                ))}
                                 <div className="flex justify-between items-center px-2 pt-1">
                                     <span className="text-[10px] text-muted">Saldo em aberto</span>
-                                    <span className="text-xs font-black text-amber-400">{formatCurrency(cr.valor - cr.valorRecebido)}</span>
+                                    <span className="text-xs font-black text-amber-400">{formatCurrency(saldo)}</span>
                                 </div>
-                            </div>
-                        )}
+                              </div>
+                            );
+                        })()}
                         {cr.status === 'Recebido' && cr.dataRecebimento && (
                             <div className="px-3 pb-2 pt-0 border-t border-emerald-900/30">
                                 <p className="text-[10px] text-emerald-400 font-bold mt-1.5">Recebido em {new Date(cr.dataRecebimento).toLocaleDateString('pt-BR')}</p>

@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 import { formatCurrency, calculateStatusAtrasado, parseMonetaryValue, formatMonetaryInput } from '../utils';
 import { CheckCircle, Search, Trash2, CreditCard } from 'lucide-react';
 import { toast } from '../toast';
-import { generateId } from '../utils';
 import { VendaOverviewModal } from './VendaOverviewModal';
+
+const totalPago = (c: any): number =>
+  (c.pagamentos || []).reduce((s: number, p: any) => s + p.valor, 0);
+const saldoRestante = (c: any): number =>
+  Math.max(0, c.valor - totalPago(c));
 
 export function ContasReceber({ data, updateData }: any) {
   const [view, setView] = useState<'pendentes' | 'recebidos'>('pendentes');
@@ -24,36 +28,31 @@ export function ContasReceber({ data, updateData }: any) {
   const openBaixar = (c: any) => {
     setContaToReceive(c);
     setDateToReceive(new Date().toISOString().substring(0, 10));
-    setValorRecebidoInput(formatMonetaryInput(c.valor));
+    // sugerir o saldo real restante (considera pagamentos anteriores)
+    setValorRecebidoInput(formatMonetaryInput(saldoRestante(c)));
   };
 
   const confirmReceive = () => {
     if (!contaToReceive) return;
     const valorRecebido = parseMonetaryValue(valorRecebidoInput);
-    const saldo = contaToReceive.valor - valorRecebido;
-    const isParcial = valorRecebido > 0 && saldo > 0.009;
+    if (valorRecebido <= 0) return;
 
-    let contasReceber = data.contasReceber.map((c: any) =>
+    const novoPagamento = { data: dateToReceive, valor: valorRecebido };
+    const pagamentosAtualizados = [...(contaToReceive.pagamentos || []), novoPagamento];
+    const totalPagoAtual = pagamentosAtualizados.reduce((s: number, p: any) => s + p.valor, 0);
+    const saldo = Math.max(0, contaToReceive.valor - totalPagoAtual);
+    const isParcial = saldo > 0.009;
+
+    const contasReceber = data.contasReceber.map((c: any) =>
       c.id === contaToReceive.id
-        ? { ...c, status: isParcial ? 'Parcial' : 'Recebido', dataRecebimento: dateToReceive, valorRecebido }
+        ? {
+            ...c,
+            pagamentos: pagamentosAtualizados,
+            status: isParcial ? 'Parcial' : 'Recebido',
+            dataRecebimento: isParcial ? undefined : dateToReceive,
+          }
         : c
     );
-
-    // Se parcial: cria nova conta com o saldo restante
-    if (isParcial) {
-      contasReceber = [
-        ...contasReceber,
-        {
-          id: generateId(),
-          vendaId: contaToReceive.vendaId,
-          cliente: contaToReceive.cliente,
-          valor: Math.round(saldo * 100) / 100,
-          vencimento: contaToReceive.vencimento,
-          status: 'Pendente',
-          parcelaRef: contaToReceive.id,
-        },
-      ];
-    }
 
     let updatedVendas = data.vendas;
     if (!isParcial && contaToReceive.vendaId) {
@@ -88,9 +87,9 @@ export function ContasReceber({ data, updateData }: any) {
   const emAtraso = data.contasReceber.filter((c:any) => calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado');
   const recebidosMes = data.contasReceber.filter((c:any) => c.status === 'Recebido');
 
-  const totalAReceber = aReceber.reduce((acc:any, c:any) => acc + c.valor, 0);
-  const totalEmAtraso = emAtraso.reduce((acc:any, c:any) => acc + c.valor, 0);
-  const totalRecebidoMes = recebidosMes.reduce((acc:any, c:any) => acc + c.valor, 0);
+  const totalAReceber = aReceber.reduce((acc:any, c:any) => acc + saldoRestante(c), 0);
+  const totalEmAtraso = emAtraso.reduce((acc:any, c:any) => acc + saldoRestante(c), 0);
+  const totalRecebidoMes = recebidosMes.reduce((acc:any, c:any) => acc + totalPago(c), 0);
 
   return (
     <div className="space-y-6">
@@ -165,12 +164,13 @@ export function ContasReceber({ data, updateData }: any) {
                   <td className="px-4 py-3 text-xs font-mono text-muted whitespace-nowrap">{venda?.numeroPedido || 'N/A'}</td>
                   <td className="px-4 py-3 text-[10px] uppercase font-black text-primary bg-surface-alt rounded tracking-widest">{localizadores || '-'}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="font-black text-primary">{formatCurrency(c.valor)}</p>
-                    {c.status === 'Parcial' && c.valorRecebido != null && (
-                      <p className="text-[10px] text-emerald-400 font-bold">↓ {formatCurrency(c.valorRecebido)} recebido</p>
-                    )}
-                    {c.parcelaRef && (
-                      <p className="text-[10px] text-amber-400 font-bold">Saldo restante</p>
+                    {c.status === 'Parcial' ? (
+                      <>
+                        <p className="font-black text-amber-400">{formatCurrency(saldoRestante(c))}</p>
+                        <p className="text-[10px] text-muted">de {formatCurrency(c.valor)} · ↓ {formatCurrency(totalPago(c))} recebido</p>
+                      </>
+                    ) : (
+                      <p className="font-black text-primary">{formatCurrency(c.valor)}</p>
                     )}
                   </td>
                   <td className="px-4 py-3 font-bold text-primary whitespace-nowrap">{new Date(c.vencimento).toLocaleDateString('pt-BR')}</td>
@@ -244,10 +244,10 @@ export function ContasReceber({ data, updateData }: any) {
       )}
 
       {contaToReceive && (() => {
-        const valorRecebido = parseMonetaryValue(valorRecebidoInput);
-        const saldo = Math.max(0, contaToReceive.valor - valorRecebido);
-        const isParcial = valorRecebido > 0 && saldo > 0.009;
-        const isFull = valorRecebido >= contaToReceive.valor - 0.009;
+        const valorInput = parseMonetaryValue(valorRecebidoInput);
+        const saldoAtual = saldoRestante(contaToReceive);
+        const saldoApos = Math.max(0, saldoAtual - valorInput);
+        const isParcial = valorInput > 0 && saldoApos > 0.009;
         return (
           <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col border border-border">
@@ -262,7 +262,10 @@ export function ContasReceber({ data, updateData }: any) {
                 <div className="bg-surface-alt rounded-xl p-3 border border-border">
                   <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-0.5">Cliente</p>
                   <p className="text-sm font-bold text-primary">{contaToReceive.cliente}</p>
-                  <p className="text-xs text-muted mt-1">Valor total do título: <strong className="text-primary">{formatCurrency(contaToReceive.valor)}</strong></p>
+                  <p className="text-xs text-muted mt-1">Valor original: <strong className="text-primary">{formatCurrency(contaToReceive.valor)}</strong></p>
+                  {totalPago(contaToReceive) > 0 && (
+                    <p className="text-xs text-emerald-400 mt-0.5">Já recebido: <strong>{formatCurrency(totalPago(contaToReceive))}</strong> · Saldo: <strong>{formatCurrency(saldoAtual)}</strong></p>
+                  )}
                 </div>
 
                 {/* Valor recebido */}
@@ -279,12 +282,12 @@ export function ContasReceber({ data, updateData }: any) {
                     placeholder="R$ 0,00"
                   />
                   {/* Preview saldo */}
-                  {valorRecebido > 0 && (
+                  {valorInput > 0 && (
                     <div className={`mt-2 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between ${isParcial ? 'bg-amber-900/20 text-amber-400 border border-amber-800' : 'bg-emerald-900/20 text-emerald-400 border border-emerald-800'}`}>
                       {isParcial ? (
                         <>
                           <span>Pagamento parcial</span>
-                          <span>Saldo restante: {formatCurrency(saldo)}</span>
+                          <span>Saldo após: {formatCurrency(saldoApos)}</span>
                         </>
                       ) : (
                         <span>Quitação total do título</span>

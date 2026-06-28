@@ -163,7 +163,8 @@ export function Dashboard({ data }: any) {
         (c.status === 'Parcial' && calculateStatusAtrasado(c.vencimento, 'Pendente') === 'Atrasado'))
       .forEach((c: any) => {
         const dias = Math.floor((hoje.getTime() - new Date(c.vencimento + 'T12:00:00').getTime()) / 86400000);
-        const saldo = c.status === 'Parcial' && c.valorRecebido != null ? c.valor - c.valorRecebido : c.valor;
+        const pago = (c.pagamentos || []).reduce((s: number, p: any) => s + p.valor, 0);
+        const saldo = Math.max(0, c.valor - pago);
         items.push({
           tipo: 'error',
           label: `A Receber em atraso — ${c.cliente}`,
