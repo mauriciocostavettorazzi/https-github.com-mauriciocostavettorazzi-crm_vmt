@@ -466,7 +466,7 @@ export function ContasReceber({ data, updateData }: any) {
                   <button onClick={() => setContaToReceive(null)} className="px-4 py-2 border border-border rounded-lg text-muted font-bold hover:bg-surface-alt text-sm">Cancelar</button>
                   <button
                     onClick={confirmReceive}
-                    disabled={valorRecebido <= 0}
+                    disabled={valorInput <= 0}
                     className="px-4 py-2 bg-[#1D9E75] text-white rounded-lg font-bold text-xs uppercase tracking-wider hover:brightness-110 disabled:opacity-40">
                     {isParcial ? 'Registrar Abatimento' : 'Confirmar Recebimento'}
                   </button>
