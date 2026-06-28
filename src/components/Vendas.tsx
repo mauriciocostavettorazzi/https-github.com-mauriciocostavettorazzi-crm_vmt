@@ -46,7 +46,7 @@ const DESTINOS_SUGESTOES = [
   'Sydney, Austrália','Melbourne, Austrália','Auckland, Nova Zelândia',
 ];
 import { formatCurrency, maskCpfCnpj, generateId, parseMonetaryValue, formatMonetaryInput } from '../utils';
-import { PlusCircle, Search, Trash2, Edit, XCircle, X, Filter, ShoppingCart, BedDouble, Users, CheckSquare, Square, Shield, Paperclip, FileUp, Loader2, Sparkles } from 'lucide-react';
+import { PlusCircle, Search, Trash2, Edit, XCircle, X, Filter, ShoppingCart, BedDouble, Users, CheckSquare, Square, Shield, Car, Paperclip, FileUp, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from '../toast';
 import { addDays } from 'date-fns';
@@ -191,6 +191,10 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
     incluirSeguro: false,
     seguro: { seguradora: '', apolice: '', cobertura: '', validade: '', valor: '' },
 
+    // Aluguel de Carro
+    incluirAluguel: false,
+    aluguel: { empresa: '', voucher: '', modelo: '', retiradaLocal: '', retiradaData: '', devolucaoLocal: '', devolucaoData: '', observacoes: '' },
+
     // Documentos (gerenciados direto na venda salva)
     documentos: [] as any[],
   });
@@ -231,12 +235,13 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
       destinos: formData.destinos || [],
       tarefas: formData.tarefas || [],
       seguro: formData.incluirSeguro && formData.seguro.seguradora ? { ...formData.seguro, valor: formData.seguro.valor ? parseMonetaryValue(formData.seguro.valor) : 0 } : undefined,
+      aluguel: formData.incluirAluguel && formData.aluguel.empresa ? { ...formData.aluguel } : undefined,
       documentos: formData.documentos || [],
     };
     
     // Voos
     let novosVoos: any[] = [];
-    if (formData.tipo === 'Passagem Aérea' && formData.incluirVoo) {
+    if ((formData.tipo === 'Passagem Aérea' || formData.tipo === 'Pacote') && formData.incluirVoo) {
       novosVoos = formData.voosList.map((voo, idx) => ({
         id: voo.id,
         vendaId,
@@ -363,6 +368,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
        novaTarefaPrazo: '',
        incluirSeguro: !!(venda.seguro?.seguradora),
        seguro: venda.seguro ? { ...venda.seguro, valor: venda.seguro.valor ? formatMonetaryInput(venda.seguro.valor) : '' } : { seguradora: '', apolice: '', cobertura: '', validade: '', valor: '' },
+       incluirAluguel: !!(venda.aluguel?.empresa),
+       aluguel: venda.aluguel || { empresa: '', voucher: '', modelo: '', retiradaLocal: '', retiradaData: '', devolucaoLocal: '', devolucaoData: '', observacoes: '' },
        documentos: venda.documentos || [],
      });
      setEditingId(venda.id);
@@ -832,12 +839,40 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                 </div>
               )}
 
+              {/* Componentes do Pacote */}
+              {formData.tipo === 'Pacote' && (
+                <div className="col-span-1 md:col-span-2 mt-2 border-t border-border pt-4">
+                  <h5 className="font-black text-white uppercase tracking-wider text-sm mb-3 flex items-center gap-2">
+                    <span className="text-[#C084FC]">📦</span> Componentes do Pacote
+                  </h5>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { key: 'incluirVoo',        label: 'Passagem Aérea', icon: '✈️' },
+                      { key: 'incluirHospedagem', label: 'Hospedagem',     icon: '🏨' },
+                      { key: 'incluirSeguro',     label: 'Seguro Viagem',  icon: '🛡️' },
+                      { key: 'incluirAluguel',    label: 'Aluguel de Carro', icon: '🚗' },
+                    ].map(({ key, label, icon }) => (
+                      <label key={key} className={`flex items-center gap-2 cursor-pointer p-3 rounded-xl border transition-all select-none
+                        ${(formData as any)[key]
+                          ? 'border-[#C084FC] bg-purple-900/20 text-white'
+                          : 'border-border bg-surface-alt text-muted hover:border-border-hover'}`}>
+                        <input type="checkbox" className="hidden"
+                          checked={(formData as any)[key]}
+                          onChange={e => setFormData({ ...formData, [key]: e.target.checked })} />
+                        <span className="text-base">{icon}</span>
+                        <span className="text-xs font-bold uppercase tracking-wide">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Voos Emissao */}
-              {formData.tipo === 'Passagem Aérea' && (
+              {(formData.tipo === 'Passagem Aérea' || formData.tipo === 'Pacote') && (
                 <div className="col-span-1 md:col-span-2 space-y-3 mt-2 border-t border-border pt-4">
                   <div className="flex items-center space-x-2 border-b border-border pb-2">
-                      <input type="checkbox" className="rounded border-border-hover text-white focus:ring-[#1F2220]" 
-                        checked={formData.incluirVoo} onChange={(e) => setFormData({...formData, incluirVoo: e.target.checked})} />
+                      {formData.tipo !== 'Pacote' && <input type="checkbox" className="rounded border-border-hover text-white focus:ring-[#1F2220]"
+                        checked={formData.incluirVoo} onChange={(e) => setFormData({...formData, incluirVoo: e.target.checked})} />}
                       <h5 className="font-bold text-white uppercase tracking-wider text-sm">Emitir Voo / Detalhes de Embarque</h5>
                   </div>
                   
@@ -1099,8 +1134,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
             {(formData.tipo === 'Hotel' || formData.tipo === 'Pacote') && (
               <div className="md:col-span-2 xl:col-span-4 space-y-3 mt-2 border-t border-border pt-4">
                 <div className="flex items-center space-x-2 border-b border-border pb-2">
-                  <input type="checkbox" checked={formData.incluirHospedagem}
-                    onChange={e => setFormData({ ...formData, incluirHospedagem: e.target.checked })} />
+                  {formData.tipo !== 'Pacote' && <input type="checkbox" checked={formData.incluirHospedagem}
+                    onChange={e => setFormData({ ...formData, incluirHospedagem: e.target.checked })} />}
                   <h5 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
                     <BedDouble size={16} className="text-[#1D9E75]" /> Registrar Hospedagem
                   </h5>
@@ -1226,13 +1261,14 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
             {/* ── Seguro de Viagem ── */}
             <div className="md:col-span-2 xl:col-span-4 space-y-3 mt-2 border-t border-border pt-4">
-              <div className="flex items-center gap-2">
+              {formData.tipo !== 'Pacote' && <div className="flex items-center gap-2">
                 <input type="checkbox" checked={formData.incluirSeguro}
                   onChange={e => setFormData({ ...formData, incluirSeguro: e.target.checked })} />
                 <h5 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
                   <Shield size={16} className="text-[#1D9E75]" /> Seguro de Viagem
                 </h5>
-              </div>
+              </div>}
+              {formData.tipo === 'Pacote' && formData.incluirSeguro && <h5 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2"><Shield size={16} className="text-[#1D9E75]" /> Seguro de Viagem</h5>}
               {formData.incluirSeguro && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-surface border border-border rounded-lg">
                   <div><label className="block text-xs font-bold text-muted uppercase mb-1">Seguradora</label>
@@ -1248,6 +1284,33 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                 </div>
               )}
             </div>
+
+            {/* ── Aluguel de Carro ── */}
+            {(formData.tipo === 'Locação de Veículo' || (formData.tipo === 'Pacote' && formData.incluirAluguel)) && (
+            <div className="md:col-span-2 xl:col-span-4 space-y-3 mt-2 border-t border-border pt-4">
+              <h5 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
+                <Car size={16} className="text-[#1D9E75]" /> Aluguel de Carro
+              </h5>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-surface border border-border rounded-lg">
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Locadora</label>
+                    <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" placeholder="Localiza, Hertz..." value={formData.aluguel.empresa} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, empresa: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Voucher</label>
+                    <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm font-mono" value={formData.aluguel.voucher || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, voucher: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Modelo / Categoria</label>
+                    <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" placeholder="SUV, Básico..." value={formData.aluguel.modelo || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, modelo: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Local de Retirada</label>
+                    <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.retiradaLocal || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, retiradaLocal: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Data de Retirada</label>
+                    <input type="date" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.retiradaData || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, retiradaData: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Local de Devolução</label>
+                    <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.devolucaoLocal || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, devolucaoLocal: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Data de Devolução</label>
+                    <input type="date" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.devolucaoData || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, devolucaoData: e.target.value } })} /></div>
+                  <div className="col-span-2 md:col-span-2"><label className="block text-xs font-bold text-muted uppercase mb-1">Observações</label>
+                    <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.observacoes || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, observacoes: e.target.value } })} /></div>
+              </div>
+            </div>
+            )}
 
             {/* ── Tarefas / Checklist ── */}
             <div className="md:col-span-2 xl:col-span-4 space-y-3 mt-2 border-t border-border pt-4">

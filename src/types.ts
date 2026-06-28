@@ -165,6 +165,17 @@ export type SeguroViagem = {
   valor?: number;
 };
 
+export type AluguelCarro = {
+  empresa: string;
+  voucher?: string;
+  modelo?: string;
+  retiradaLocal?: string;
+  retiradaData?: string;
+  devolucaoLocal?: string;
+  devolucaoData?: string;
+  observacoes?: string;
+};
+
 export type Cotacao = {
   id: string;
   cliente: string;
@@ -214,6 +225,7 @@ export type Venda = {
   custo?: number;
   fornecedorCusto?: string;
   hospedagens?: HospedagemItem[];
+  aluguel?: AluguelCarro;
   // Novos campos
   passageiros?: { pessoaId: string; nome: string }[];
   destinos?: string[];
