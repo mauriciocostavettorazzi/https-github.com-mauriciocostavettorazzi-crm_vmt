@@ -1,20 +1,6 @@
 import { format, addDays, isPast, isToday, startOfDay, parseISO, differenceInHours } from 'date-fns';
 
 export const formatCurrency = (value: number) => {
-  const isNegative = value < 0;
-  const absValue = Math.abs(value);
-  
-  if (absValue >= 10000) {
-    const sign = isNegative ? '-' : '';
-    if (absValue >= 1000000000) {
-      return `${sign}R$ ${(absValue / 1000000000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}MM`;
-    }
-    if (absValue >= 1000000) {
-      return `${sign}R$ ${(absValue / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}M`;
-    }
-    return `${sign}R$ ${(absValue / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}K`;
-  }
-
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
