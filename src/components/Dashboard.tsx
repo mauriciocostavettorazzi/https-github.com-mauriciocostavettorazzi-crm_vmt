@@ -99,11 +99,18 @@ export function Dashboard({ data }: any) {
   const valorVendas  = vendasFiltradas.reduce((a: number, v: any) => a + (v.valorBruto || 0), 0);
   const lucroBruto   = vendasFiltradas.reduce((a: number, v: any) => a + (Number(v.comissao) || 0), 0);
 
+  const saldoConta = (c: any): number => {
+    if ((c.pagamentos || []).length > 0)
+      return Math.max(0, c.valor - (c.pagamentos as any[]).reduce((s: number, p: any) => s + p.valor, 0));
+    return Math.max(0, c.valor - (c.valorRecebido || 0));
+  };
   const receberPendente = data.contasReceber.filter((c: any) => {
+    if (c.status === 'Recebido' || c.status === 'Cancelado') return false;
     const s = calculateStatusAtrasado(c.vencimento, c.status);
-    return ['Em dia', 'Pgto do dia', 'Atrasado'].includes(s) && filterByDate(c.vencimento);
+    const isAtrasadoParcial = c.status === 'Parcial' && calculateStatusAtrasado(c.vencimento, 'Pendente') === 'Atrasado';
+    return (['Em dia', 'Pgto do dia', 'Atrasado', 'Parcial'].includes(s) || isAtrasadoParcial) && filterByDate(c.vencimento);
   });
-  const valorReceber = receberPendente.reduce((a: number, v: any) => a + v.valor, 0);
+  const valorReceber = receberPendente.reduce((a: number, c: any) => a + saldoConta(c), 0);
 
   const pagarPendente = data.contasPagar.filter((c: any) => {
     const s = calculateStatusAtrasado(c.vencimento, c.status);
