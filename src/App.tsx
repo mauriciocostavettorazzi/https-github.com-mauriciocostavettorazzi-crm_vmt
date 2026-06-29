@@ -9,10 +9,11 @@ import { Acompanhamento } from './components/Acompanhamento';
 import { Calendario } from './components/Calendario';
 import { Comissoes } from './components/Comissoes';
 import { Comunicacoes } from './components/Comunicacoes';
+import { Financeiro } from './components/Financeiro';
 import {
   LayoutDashboard, Briefcase, Plane, Download, Upload, Users,
   Sun, Moon, CheckCircle2, XCircle, Info, FileText,
-  CalendarDays, DollarSign, MessageCircle, Plus, Bell, Search,
+  CalendarDays, DollarSign, MessageCircle, Plus, Bell, Search, Wallet,
 } from 'lucide-react';
 import { registerToast } from './toast';
 
@@ -25,6 +26,7 @@ const NAV_PRINCIPAL = [
 ];
 
 const NAV_OPERACAO = [
+  { id: 'financeiro',   label: 'Financeiro', icon: Wallet },
   { id: 'receber',      label: 'A Receber',  icon: Download },
   { id: 'pagar',        label: 'A Pagar',    icon: Upload },
   { id: 'comissoes',    label: 'Comissões',  icon: DollarSign },
@@ -304,6 +306,7 @@ export default function App() {
             {activeTab === 'receber'      && <ContasReceber data={data} updateData={updateData} />}
             {activeTab === 'pagar'        && <ContasPagar  data={data} updateData={updateData} />}
             {activeTab === 'pessoas'      && <Pessoas      data={data} updateData={updateData} />}
+            {activeTab === 'financeiro'   && <Financeiro   data={data} />}
             {activeTab === 'calendario'   && <Calendario   data={data} />}
             {activeTab === 'comissoes'    && <Comissoes    data={data} updateData={updateData} />}
             {activeTab === 'comunicacoes' && <Comunicacoes data={data} updateData={updateData} />}
