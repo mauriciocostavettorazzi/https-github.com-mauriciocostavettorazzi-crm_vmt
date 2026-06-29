@@ -206,7 +206,26 @@ export function Acompanhamento({ data, updateData }: any) {
     return [...(data.segurosAvulsos || []), ...deVendas];
   }, [data.vendas, data.segurosAvulsos]);
 
-  const carros      = data.carrosLocados || [];
+  const carros      = useMemo(() => {
+    // Aluguéis registrados nas vendas (Pacote/Locação) + módulo próprio
+    const deVendas: any[] = [];
+    (data.vendas || []).filter((v: any) => v.status !== 'Cancelado' && v.aluguel?.empresa).forEach((v: any) => {
+      deVendas.push({
+        id: `car-${v.id}`,
+        cliente: v.cliente,
+        locadora: v.aluguel.empresa,
+        modelo: v.aluguel.modelo,
+        retirada: v.aluguel.retiradaData,
+        devolucao: v.aluguel.devolucaoData,
+        localRetirada: v.aluguel.retiradaLocal,
+        voucher: v.aluguel.voucher,
+        observacoes: v.aluguel.observacoes,
+        status: 'Confirmado',
+        _vendaId: v.id,
+      });
+    });
+    return [...(data.carrosLocados || []), ...deVendas];
+  }, [data.vendas, data.carrosLocados]);
 
   // ── Formulários ───────────────────────────────────────────────────────────────
   const initVoo = () => ({ vendaId: '', ciaAerea: '', numeroVoo: '', origem: '', destino: '', dataPartida: '', dataChegada: '', localizador: '', passageiros: '', tipoVoo: 'Nacional', formaEmissao: 'Milhas', fornecedor: '', status: 'Emitido' });
@@ -686,12 +705,20 @@ export function Acompanhamento({ data, updateData }: any) {
                   <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{c.devolucao ? new Date(c.devolucao + 'T12:00').toLocaleDateString('pt-BR') : '—'}</td>
                   <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{c.localRetirada || '—'}</td>
                   <td className="px-4 py-3 font-display font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{c.valor ? formatCurrency(Number(c.valor)) : '—'}</td>
-                  <td className="px-4 py-3"><StatusBadge value={c.status} onChange={s => updateStatus('carro', c.id, s)} options={['Confirmado', 'Pendente', 'Cancelado']} /></td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1.5">
-                      <button onClick={() => openModal('carro', c)} className="p-1.5 rounded-lg" style={{ color: C.cyan }}><Edit size={13} /></button>
-                      <button onClick={() => deleteItem('carro', c.id)} className="p-1.5 rounded-lg" style={{ color: C.red }}><Trash2 size={13} /></button>
-                    </div>
+                    {c._vendaId ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${C.teal}22`, color: C.teal }}>Confirmado</span>
+                    ) : (
+                      <StatusBadge value={c.status} onChange={s => updateStatus('carro', c.id, s)} options={['Confirmado', 'Pendente', 'Cancelado']} />
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {!c._vendaId && (
+                      <div className="flex gap-1.5">
+                        <button onClick={() => openModal('carro', c)} className="p-1.5 rounded-lg" style={{ color: C.cyan }}><Edit size={13} /></button>
+                        <button onClick={() => deleteItem('carro', c.id)} className="p-1.5 rounded-lg" style={{ color: C.red }}><Trash2 size={13} /></button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
