@@ -52,6 +52,7 @@ import { toast } from '../toast';
 import { addDays } from 'date-fns';
 import { VendaOverviewModal } from './VendaOverviewModal';
 import { extractTextFromPdf, extractReservationData } from '../lib/extractPdf';
+import { saldoRestante, registrarPagamento, definirPagamentos } from '../lib/financeiro';
 import type { Lead, HospedagemItem } from '../types';
 
 export function Vendas({ data, updateData, setActiveTab }: any) {
@@ -409,17 +410,32 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
     
     const newValue = !venda[campo];
     
+    const hoje = new Date().toISOString().substring(0, 10);
     let updatedContasPagar = data.contasPagar;
     let updatedContasReceber = data.contasReceber;
-    
+
     if (campo === 'statusP') {
-      updatedContasPagar = data.contasPagar.map((cp: any) => 
-        cp.vendaId === id ? { ...cp, status: newValue ? 'Pago' : 'Pendente' } : cp
-      );
+      updatedContasPagar = data.contasPagar.map((cp: any) => {
+        if (cp.vendaId !== id) return cp;
+        if (newValue) {
+          // marca como pago: registra o saldo restante como pagamento (data de hoje)
+          const saldo = saldoRestante(cp);
+          return saldo > 0.009 ? registrarPagamento(cp, { data: hoje, valor: saldo }, 'pagar') : { ...cp, status: 'Pago' };
+        }
+        // desmarca: limpa pagamentos e volta a Pendente
+        return definirPagamentos(cp, [], 'pagar');
+      });
     } else if (campo === 'statusR') {
-      updatedContasReceber = data.contasReceber.map((cr: any) => 
-        cr.vendaId === id ? { ...cr, status: newValue ? 'Recebido' : 'Pendente' } : cr
-      );
+      updatedContasReceber = data.contasReceber.map((cr: any) => {
+        if (cr.vendaId !== id) return cr;
+        if (newValue) {
+          // marca como recebido: registra o saldo restante como pagamento (data de hoje)
+          const saldo = saldoRestante(cr);
+          return saldo > 0.009 ? registrarPagamento(cr, { data: hoje, valor: saldo }, 'receber') : { ...cr, status: 'Recebido' };
+        }
+        // desmarca: limpa pagamentos e volta a Pendente
+        return definirPagamentos(cr, [], 'receber');
+      });
     }
     
     updateData({

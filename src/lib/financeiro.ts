@@ -24,9 +24,10 @@ export function pagamentosDe(c: any): Pagamento[] {
   // legado A Receber / Comissão: valorRecebido único
   if (c?.valorRecebido != null && c.valorRecebido > 0)
     return [{ data: c.dataRecebida || c.dataRecebimento || c.dataPagamento || '', valor: c.valorRecebido }];
-  // legado quitação total (status Pago/Recebido sem histórico)
+  // legado quitação total (status Pago/Recebido sem histórico) —
+  // usa vencimento como última data de fallback p/ não sumir do fluxo de caixa
   if ((c?.status === 'Pago' || c?.status === 'Recebido' || c?.status === 'Recebida') && c?.valor)
-    return [{ data: c.dataPagamento || c.dataRecebimento || c.dataRecebida || '', valor: c.valor }];
+    return [{ data: c.dataPagamento || c.dataRecebimento || c.dataRecebida || c.vencimento || '', valor: c.valor }];
   return [];
 }
 
