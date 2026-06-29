@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { formatCurrency, generateId, parseMonetaryValue, formatMonetaryInput, calculateStatusAtrasado } from '../utils';
-import { PlusCircle, Search, CheckCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Search, CheckCircle, Trash2, History, Pencil } from 'lucide-react';
 import { toast } from '../toast';
 import { VendaOverviewModal } from './VendaOverviewModal';
+import { totalPago, saldoRestante, isAtrasado as contaAtrasada, pagamentosDe, registrarPagamento, definirPagamentos } from '../lib/financeiro';
 
 export function ContasPagar({ data, updateData }: any) {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -23,9 +24,15 @@ export function ContasPagar({ data, updateData }: any) {
   });
 
   const [dateToPay, setDateToPay] = useState(new Date().toISOString().substring(0, 10));
+  const [valorPagoInput, setValorPagoInput] = useState('');
 
   const [contaToPay, setContaToPay] = useState<any>(null);
   const [contaToDelete, setContaToDelete] = useState<any>(null);
+  // Gerenciar pagamentos
+  const [managingConta, setManagingConta] = useState<any>(null);
+  const [editingPgtoIdx, setEditingPgtoIdx] = useState<number | null>(null);
+  const [editPgtoData, setEditPgtoData] = useState('');
+  const [editPgtoValor, setEditPgtoValor] = useState('');
 
   const confirmDelete = () => {
     if (!contaToDelete) return;
@@ -95,27 +102,62 @@ export function ContasPagar({ data, updateData }: any) {
     setIsFormOpen(false);
   };
 
+  const openBaixar = (c: any) => {
+    setContaToPay(c);
+    setDateToPay(new Date().toISOString().substring(0, 10));
+    setValorPagoInput(formatMonetaryInput(saldoRestante(c)));
+  };
+
   const confirmPay = () => {
     if (!contaToPay) return;
-    
+    const valorPago = parseMonetaryValue(valorPagoInput);
+    if (valorPago <= 0) return;
+
+    const atualizada = registrarPagamento(contaToPay, { data: dateToPay, valor: valorPago }, 'pagar');
+    const ehParcial = atualizada.status === 'Parcial';
+
     let updatedVendas = data.vendas;
-    if (contaToPay.vendaId) {
+    if (!ehParcial && contaToPay.vendaId) {
       updatedVendas = data.vendas.map((v: any) =>
         v.id === contaToPay.vendaId ? { ...v, statusP: true } : v
       );
     }
 
     updateData({
-      contasPagar: data.contasPagar.map((c: any) => 
-        c.id === contaToPay.id ? { ...c, status: 'Pago', dataPagamento: dateToPay } : c
-      ),
-      vendas: updatedVendas
+      contasPagar: data.contasPagar.map((c: any) => (c.id === contaToPay.id ? atualizada : c)),
+      vendas: updatedVendas,
     });
+    toast(ehParcial
+      ? `Pagamento de ${formatCurrency(valorPago)} registrado. Saldo restante: ${formatCurrency(saldoRestante(atualizada))}`
+      : 'Título baixado como pago!');
     setContaToPay(null);
   };
 
-  const aPagar = data.contasPagar.filter((c:any) => ['Em dia', 'Pgto do dia'].includes(calculateStatusAtrasado(c.vencimento, c.status)));
-  const emAtraso = data.contasPagar.filter((c:any) => calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado');
+  // Gerenciar pagamentos
+  const openManage = (c: any) => {
+    setManagingConta({ ...c, pagamentos: pagamentosDe(c) });
+    setEditingPgtoIdx(null);
+  };
+  const saveManage = (novosPagamentos: any[]) => {
+    const atualizada = definirPagamentos(managingConta, novosPagamentos, 'pagar');
+    updateData({ contasPagar: data.contasPagar.map((c: any) => (c.id === managingConta.id ? atualizada : c)) });
+    setManagingConta(atualizada);
+  };
+  const deletePgto = (idx: number) => {
+    saveManage((managingConta.pagamentos || []).filter((_: any, i: number) => i !== idx));
+    if (editingPgtoIdx === idx) setEditingPgtoIdx(null);
+    toast('Pagamento removido.', 'info');
+  };
+  const saveEditPgto = (idx: number) => {
+    const valor = parseMonetaryValue(editPgtoValor);
+    if (valor <= 0 || !editPgtoData) return;
+    saveManage((managingConta.pagamentos || []).map((p: any, i: number) => (i === idx ? { data: editPgtoData, valor } : p)));
+    setEditingPgtoIdx(null);
+    toast('Pagamento atualizado.');
+  };
+
+  const aPagar = data.contasPagar.filter((c:any) => !contaAtrasada(c) && ['Em dia', 'Pgto do dia', 'Parcial'].includes(calculateStatusAtrasado(c.vencimento, c.status)) && c.status !== 'Pago');
+  const emAtraso = data.contasPagar.filter((c:any) => contaAtrasada(c));
   const pagosMes = data.contasPagar.filter((c:any) => c.status === 'Pago'); // Simplified for month
 
   const contasFiltradas = data.contasPagar.filter((c: any) => {
@@ -131,9 +173,9 @@ export function ContasPagar({ data, updateData }: any) {
     return isStatusMatch;
   });
 
-  const totalAPagar = aPagar.reduce((acc:any, c:any) => acc + c.valor, 0);
-  const totalEmAtraso = emAtraso.reduce((acc:any, c:any) => acc + c.valor, 0);
-  const totalPagoMes = pagosMes.reduce((acc:any, c:any) => acc + c.valor, 0);
+  const totalAPagar = aPagar.reduce((acc:any, c:any) => acc + saldoRestante(c), 0);
+  const totalEmAtraso = emAtraso.reduce((acc:any, c:any) => acc + saldoRestante(c), 0);
+  const totalPagoMes = pagosMes.reduce((acc:any, c:any) => acc + totalPago(c), 0);
 
   const now = new Date();
   const next7Days = new Date(now);
@@ -351,24 +393,45 @@ export function ContasPagar({ data, updateData }: any) {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-[10px] uppercase font-black text-primary bg-surface-alt rounded tracking-widest">{localizadores || '-'}</td>
-                  <td className="px-4 py-3 font-black text-primary whitespace-nowrap">{formatCurrency(c.valor)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {c.status === 'Parcial' ? (
+                      <>
+                        <p className="font-black text-amber-400">{formatCurrency(saldoRestante(c))}</p>
+                        <p className="text-[10px] text-muted">de {formatCurrency(c.valor)} · ↓ {formatCurrency(totalPago(c))} pago</p>
+                      </>
+                    ) : (
+                      <p className="font-black text-primary">{formatCurrency(c.valor)}</p>
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-bold text-primary whitespace-nowrap">{new Date(c.vencimento).toLocaleDateString('pt-BR')}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider leading-none
-                      ${['Em dia', 'Pgto do dia'].includes(calculateStatusAtrasado(c.vencimento, c.status)) ? 'bg-amber-900/30 text-amber-500' : 
-                        calculateStatusAtrasado(c.vencimento, c.status) === 'Pago' ? 'bg-emerald-900/30 text-emerald-500' : 
-                        calculateStatusAtrasado(c.vencimento, c.status) === 'Cancelado' ? 'bg-surface-alt text-muted' : 'bg-red-900/30 text-red-500'}`}>
-                      {calculateStatusAtrasado(c.vencimento, c.status)}
-                    </span>
+                    {c.status === 'Parcial' ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider leading-none bg-blue-900/30 text-blue-400 w-fit">Parcial</span>
+                        {contaAtrasada(c) && <span className="px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider leading-none bg-red-900/30 text-red-500 w-fit">Atrasado</span>}
+                      </div>
+                    ) : (
+                      <span className={`px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider leading-none
+                        ${['Em dia', 'Pgto do dia'].includes(calculateStatusAtrasado(c.vencimento, c.status)) ? 'bg-amber-900/30 text-amber-500' :
+                          calculateStatusAtrasado(c.vencimento, c.status) === 'Pago' ? 'bg-emerald-900/30 text-emerald-500' :
+                          calculateStatusAtrasado(c.vencimento, c.status) === 'Cancelado' ? 'bg-surface-alt text-muted' : 'bg-red-900/30 text-red-500'}`}>
+                        {calculateStatusAtrasado(c.vencimento, c.status)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-2">
-                      {c.status !== 'Pago' && (
-                        <button onClick={(e) => { e.stopPropagation(); setContaToPay(c); }} className="bg-emerald-900/30 text-emerald-400 hover:bg-green-100 flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded tooltip" title="Marcar como pago">
+                      {c.status !== 'Pago' && c.status !== 'Cancelado' && (
+                        <button onClick={(e) => { e.stopPropagation(); openBaixar(c); }} className="bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50 flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded" title="Registrar pagamento">
                           <CheckCircle size={14} /> Baixar
                         </button>
                       )}
-                      {c.status === 'Pago' && <span className="text-[10px] uppercase font-black text-secondary tracking-widest text-center min-w-[70px]">Pago <br/><span className="text-placeholder font-mono tracking-tighter">{c.dataPagamento?.split('-').reverse().join('/')}</span></span>}
+                      {(c.status === 'Parcial' || c.status === 'Pago') && (
+                        <button onClick={(e) => { e.stopPropagation(); openManage(c); }} className="bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded" title="Ver / editar pagamentos">
+                          <History size={14} /> Pgtos
+                        </button>
+                      )}
+                      {c.status === 'Pago' && !(c.pagamentos?.length) && <span className="text-[10px] uppercase font-black text-secondary tracking-widest text-center min-w-[70px]">Pago <br/><span className="text-placeholder font-mono tracking-tighter">{c.dataPagamento?.split('-').reverse().join('/')}</span></span>}
                       <button onClick={(e) => { e.stopPropagation(); setContaToDelete(c); }} className="bg-red-900/30 text-red-400 hover:bg-red-900/50 p-1.5 rounded tooltip" title="Excluir conta">
                         <Trash2 size={14} />
                       </button>
@@ -407,29 +470,112 @@ export function ContasPagar({ data, updateData }: any) {
         </div>
       )}
 
-      {contaToPay && (
+      {contaToPay && (() => {
+        const valorInput = parseMonetaryValue(valorPagoInput);
+        const saldoAtual = saldoRestante(contaToPay);
+        const saldoApos = Math.max(0, saldoAtual - valorInput);
+        const ehParcial = valorInput > 0 && saldoApos > 0.009;
+        return (
         <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] border border-border">
             <div className="p-4 border-b border-border bg-surface-alt flex justify-between items-center rounded-t-2xl">
                <h3 className="text-sm font-black text-primary uppercase tracking-wider">Baixar Título</h3>
                <button onClick={() => setContaToPay(null)} className="text-placeholder hover:text-primary">&times;</button>
             </div>
-            <div className="p-6">
-               <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Data do Pagamento</label>
-               <input 
-                 type="date" 
-                 value={dateToPay}
-                 onChange={(e) => setDateToPay(e.target.value)}
-                 className="w-full border border-border-hover rounded bg-surface text-primary p-2 mb-6"
-               />
+            <div className="p-6 space-y-4">
+               <div className="bg-surface-alt rounded-xl p-3 border border-border">
+                 <p className="text-[10px] font-bold text-placeholder uppercase tracking-wider mb-0.5">Fornecedor</p>
+                 <p className="text-sm font-bold text-primary">{contaToPay.fornecedor}</p>
+                 <p className="text-xs text-muted mt-1">Valor original: <strong className="text-primary">{formatCurrency(contaToPay.valor)}</strong></p>
+                 {totalPago(contaToPay) > 0 && (
+                   <p className="text-xs text-emerald-400 mt-0.5">Já pago: <strong>{formatCurrency(totalPago(contaToPay))}</strong> · Saldo: <strong>{formatCurrency(saldoAtual)}</strong></p>
+                 )}
+               </div>
+               <div>
+                 <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1">Valor Pago</label>
+                 <input type="text" inputMode="numeric"
+                   className="w-full border border-border-hover rounded-lg bg-surface-alt text-primary p-2 font-mono text-sm focus:outline-none focus:border-[#1D9E75]"
+                   value={valorPagoInput}
+                   onChange={e => setValorPagoInput(formatMonetaryInput(e.target.value))}
+                   placeholder="R$ 0,00" />
+                 {valorInput > 0 && (
+                   <div className={`mt-2 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between ${ehParcial ? 'bg-amber-900/20 text-amber-400 border border-amber-800' : 'bg-emerald-900/20 text-emerald-400 border border-emerald-800'}`}>
+                     {ehParcial ? (<><span>Pagamento parcial</span><span>Saldo após: {formatCurrency(saldoApos)}</span></>) : (<span>Quitação total do título</span>)}
+                   </div>
+                 )}
+               </div>
+               <div>
+                 <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1">Data do Pagamento</label>
+                 <input type="date" value={dateToPay} onChange={(e) => setDateToPay(e.target.value)}
+                   className="w-full border border-border-hover rounded-lg bg-surface-alt text-primary p-2 focus:outline-none focus:border-[#1D9E75]" />
+               </div>
                <div className="flex justify-end gap-3">
-                 <button onClick={() => setContaToPay(null)} className="px-4 py-2 border border-border rounded-md text-muted font-bold hover:bg-surface-alt">Cancelar</button>
-                 <button onClick={confirmPay} className="px-4 py-2 bg-[#1D9E75] text-white rounded-md font-bold hover:bg-emerald-700 uppercase tracking-widest text-xs">Confirmar Baixa</button>
+                 <button onClick={() => setContaToPay(null)} className="px-4 py-2 border border-border rounded-md text-muted font-bold hover:bg-surface-alt text-sm">Cancelar</button>
+                 <button onClick={confirmPay} disabled={valorInput <= 0} className="px-4 py-2 bg-[#1D9E75] text-white rounded-md font-bold hover:bg-emerald-700 uppercase tracking-widest text-xs disabled:opacity-40">Confirmar</button>
                </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
+
+      {/* Modal gerenciar pagamentos */}
+      {managingConta && (() => {
+        const pagamentos: any[] = managingConta.pagamentos || [];
+        const totalPagoM = pagamentos.reduce((s: number, p: any) => s + p.valor, 0);
+        const saldoM = Math.max(0, managingConta.valor - totalPagoM);
+        return (
+          <div className="fixed inset-0 bg-slate-900/70 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border overflow-hidden">
+              <div className="p-4 border-b border-border bg-surface-alt flex justify-between items-center">
+                <h3 className="text-sm font-black text-primary uppercase tracking-wider flex items-center gap-2"><History size={16} className="text-blue-400" /> Histórico de Pagamentos</h3>
+                <button onClick={() => { setManagingConta(null); setEditingPgtoIdx(null); }} className="text-placeholder hover:text-primary text-xl leading-none">&times;</button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="bg-surface-alt rounded-xl p-3 border border-border text-xs space-y-1">
+                  <div className="flex justify-between"><span className="text-muted">Fornecedor</span><span className="font-bold text-primary">{managingConta.fornecedor}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">Valor original</span><span className="font-bold text-primary">{formatCurrency(managingConta.valor)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">Total pago</span><span className="font-bold text-emerald-400">{formatCurrency(totalPagoM)}</span></div>
+                  <div className="flex justify-between border-t border-border pt-1 mt-1"><span className="text-muted font-bold">Saldo em aberto</span><span className={`font-black ${saldoM > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{formatCurrency(saldoM)}</span></div>
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {pagamentos.length === 0 && <p className="text-xs text-muted text-center py-4">Nenhum pagamento registrado.</p>}
+                  {pagamentos.map((p: any, i: number) => (
+                    <div key={i} className="bg-surface-alt border border-border rounded-lg overflow-hidden">
+                      {editingPgtoIdx === i ? (
+                        <div className="p-3 space-y-2">
+                          <div className="flex gap-2">
+                            <input type="date" value={editPgtoData} onChange={e => setEditPgtoData(e.target.value)} className="flex-1 border border-border-hover rounded bg-surface text-primary p-1.5 text-xs focus:outline-none focus:border-[#1D9E75]" />
+                            <input type="text" inputMode="numeric" value={editPgtoValor} onChange={e => setEditPgtoValor(formatMonetaryInput(e.target.value))} className="flex-1 border border-border-hover rounded bg-surface text-primary p-1.5 text-xs font-mono focus:outline-none focus:border-[#1D9E75]" />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={() => setEditingPgtoIdx(null)} className="text-[10px] px-3 py-1 border border-border rounded text-muted hover:bg-surface">Cancelar</button>
+                            <button onClick={() => saveEditPgto(i)} className="text-[10px] px-3 py-1 bg-[#1D9E75] text-white rounded font-bold hover:brightness-110">Salvar</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between px-3 py-2.5">
+                          <div>
+                            <p className="text-xs font-bold text-primary">{formatCurrency(p.valor)}</p>
+                            <p className="text-[10px] text-muted">{p.data ? new Date(p.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</p>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <button onClick={() => { setEditingPgtoIdx(i); setEditPgtoData(p.data); setEditPgtoValor(formatMonetaryInput(p.valor)); }} className="p-1.5 bg-surface hover:bg-surface-hover rounded text-blue-400" title="Editar"><Pencil size={13} /></button>
+                            <button onClick={() => deletePgto(i)} className="p-1.5 bg-surface hover:bg-red-900/40 rounded text-red-400" title="Remover pagamento"><Trash2 size={13} /></button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end pt-1">
+                  <button onClick={() => { setManagingConta(null); setEditingPgtoIdx(null); }} className="px-4 py-2 border border-border rounded-lg text-muted font-bold hover:bg-surface-alt text-sm">Fechar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

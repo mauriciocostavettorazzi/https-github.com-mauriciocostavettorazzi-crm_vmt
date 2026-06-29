@@ -3,15 +3,7 @@ import { formatCurrency, calculateStatusAtrasado, parseMonetaryValue, formatMone
 import { CheckCircle, Search, Trash2, CreditCard, History, Pencil } from 'lucide-react';
 import { toast } from '../toast';
 import { VendaOverviewModal } from './VendaOverviewModal';
-
-// Suporte a campo legado valorRecebido (antes de pagamentos[])
-const totalPago = (c: any): number => {
-  if ((c.pagamentos || []).length > 0)
-    return (c.pagamentos as any[]).reduce((s, p) => s + p.valor, 0);
-  return c.valorRecebido || 0;
-};
-const saldoRestante = (c: any): number =>
-  Math.max(0, c.valor - totalPago(c));
+import { totalPago, saldoRestante, isAtrasado as contaAtrasada, pagamentosDe, registrarPagamento, definirPagamentos } from '../lib/financeiro';
 
 export function ContasReceber({ data, updateData }: any) {
   const [view, setView] = useState<'pendentes' | 'recebidos'>('pendentes');
@@ -46,80 +38,43 @@ export function ContasReceber({ data, updateData }: any) {
     const valorRecebido = parseMonetaryValue(valorRecebidoInput);
     if (valorRecebido <= 0) return;
 
-    // Migra campo legado valorRecebido → pagamentos[]
-    const pagamentosExistentes: any[] = contaToReceive.pagamentos?.length
-      ? contaToReceive.pagamentos
-      : contaToReceive.valorRecebido
-        ? [{ data: contaToReceive.dataRecebimento || dateToReceive, valor: contaToReceive.valorRecebido }]
-        : [];
-
-    const novoPagamento = { data: dateToReceive, valor: valorRecebido };
-    const pagamentosAtualizados = [...pagamentosExistentes, novoPagamento];
-    const totalPagoAtual = pagamentosAtualizados.reduce((s: number, p: any) => s + p.valor, 0);
-    const saldo = Math.max(0, contaToReceive.valor - totalPagoAtual);
-    const isParcial = saldo > 0.009;
+    // registrarPagamento migra legado, recalcula status e limpa resíduos
+    const atualizada = registrarPagamento(contaToReceive, { data: dateToReceive, valor: valorRecebido }, 'receber');
+    const ehParcial = atualizada.status === 'Parcial';
+    const saldo = saldoRestante(atualizada);
 
     // Remove linhas duplicadas antigas (parcelaRef) ligadas a este título
     const contasReceber = data.contasReceber
       .filter((c: any) => c.parcelaRef !== contaToReceive.id)
-      .map((c: any) =>
-        c.id === contaToReceive.id
-          ? {
-              ...c,
-              pagamentos: pagamentosAtualizados,
-              valorRecebido: undefined,  // limpa campo legado
-              parcelaRef: undefined,
-              status: isParcial ? 'Parcial' : 'Recebido',
-              dataRecebimento: isParcial ? undefined : dateToReceive,
-            }
-          : c
-      );
+      .map((c: any) => (c.id === contaToReceive.id ? atualizada : c));
 
     let updatedVendas = data.vendas;
-    if (!isParcial && contaToReceive.vendaId) {
+    if (!ehParcial && contaToReceive.vendaId) {
       updatedVendas = data.vendas.map((v: any) =>
         v.id === contaToReceive.vendaId ? { ...v, statusR: true } : v
       );
     }
 
     updateData({ contasReceber, vendas: updatedVendas });
-    toast(isParcial
+    toast(ehParcial
       ? `Abatimento de ${formatCurrency(valorRecebido)} registrado. Saldo restante: ${formatCurrency(saldo)}`
       : 'Título baixado como recebido!');
     setContaToReceive(null);
   };
 
-  // Abre modal de gerenciamento de pagamentos
+  // Abre modal de gerenciamento de pagamentos (normaliza legado para pagamentos[])
   const openManage = (c: any) => {
-    // Migra campo legado se necessário
-    const conta = { ...c };
-    if (!conta.pagamentos?.length && conta.valorRecebido) {
-      conta.pagamentos = [{ data: conta.dataRecebimento || new Date().toISOString().substring(0,10), valor: conta.valorRecebido }];
-    }
-    setManagingConta(conta);
+    setManagingConta({ ...c, pagamentos: pagamentosDe(c) });
     setEditingPgtoIdx(null);
   };
 
   const saveManage = (novosPagamentos: any[]) => {
-    const total = novosPagamentos.reduce((s: number, p: any) => s + p.valor, 0);
-    const saldo = Math.max(0, managingConta.valor - total);
-    const novoStatus = novosPagamentos.length === 0 ? 'Pendente' : saldo <= 0.009 ? 'Recebido' : 'Parcial';
+    const atualizada = definirPagamentos(managingConta, novosPagamentos, 'receber');
     const contasReceber = data.contasReceber
       .filter((c: any) => c.parcelaRef !== managingConta.id) // remove duplicatas legadas
-      .map((c: any) =>
-        c.id === managingConta.id
-          ? {
-              ...c,
-              pagamentos: novosPagamentos,
-              valorRecebido: undefined,
-              parcelaRef: undefined,
-              status: novoStatus,
-              dataRecebimento: novoStatus === 'Recebido' ? novosPagamentos[novosPagamentos.length - 1]?.data : undefined,
-            }
-          : c
-      );
+      .map((c: any) => (c.id === managingConta.id ? atualizada : c));
     updateData({ contasReceber });
-    setManagingConta((prev: any) => ({ ...prev, pagamentos: novosPagamentos, status: novoStatus }));
+    setManagingConta(atualizada);
   };
 
   const deletePgto = (idx: number) => {
@@ -155,13 +110,9 @@ export function ContasReceber({ data, updateData }: any) {
     return isStatusMatch;
   });
 
-  const isAtrasado = (c: any) =>
-    calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado' ||
-    (c.status === 'Parcial' && calculateStatusAtrasado(c.vencimento, 'Pendente') === 'Atrasado');
-
   const aReceber = data.contasReceber.filter((c:any) =>
-    !isAtrasado(c) && ['Em dia', 'Pgto do dia', 'Parcial'].includes(calculateStatusAtrasado(c.vencimento, c.status)) && c.status !== 'Recebido');
-  const emAtraso = data.contasReceber.filter((c:any) => isAtrasado(c));
+    !contaAtrasada(c) && ['Em dia', 'Pgto do dia', 'Parcial'].includes(calculateStatusAtrasado(c.vencimento, c.status)) && c.status !== 'Recebido');
+  const emAtraso = data.contasReceber.filter((c:any) => contaAtrasada(c));
   const recebidosMes = data.contasReceber.filter((c:any) => c.status === 'Recebido');
 
   const totalAReceber = aReceber.reduce((acc:any, c:any) => acc + saldoRestante(c), 0);

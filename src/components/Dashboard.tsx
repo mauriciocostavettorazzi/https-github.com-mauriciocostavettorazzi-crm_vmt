@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { formatCurrency, isCheckinLiberado, getCheckinUrl, calculateStatusAtrasado } from '../utils';
+import { saldoRestante, isAtrasado as contaAtrasada, diasEmAtraso } from '../lib/financeiro';
 import { Plane, TrendingUp, DollarSign, AlertTriangle, Gift, FileWarning, CheckSquare, Users, FileText, ArrowDownCircle, ArrowUpCircle, Wallet, ExternalLink } from 'lucide-react';
 import { isWithinInterval, addDays, subDays } from 'date-fns';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
@@ -99,24 +100,19 @@ export function Dashboard({ data }: any) {
   const valorVendas  = vendasFiltradas.reduce((a: number, v: any) => a + (v.valorBruto || 0), 0);
   const lucroBruto   = vendasFiltradas.reduce((a: number, v: any) => a + (Number(v.comissao) || 0), 0);
 
-  const saldoConta = (c: any): number => {
-    if ((c.pagamentos || []).length > 0)
-      return Math.max(0, c.valor - (c.pagamentos as any[]).reduce((s: number, p: any) => s + p.valor, 0));
-    return Math.max(0, c.valor - (c.valorRecebido || 0));
-  };
   const receberPendente = data.contasReceber.filter((c: any) => {
     if (c.status === 'Recebido' || c.status === 'Cancelado') return false;
     const s = calculateStatusAtrasado(c.vencimento, c.status);
-    const isAtrasadoParcial = c.status === 'Parcial' && calculateStatusAtrasado(c.vencimento, 'Pendente') === 'Atrasado';
-    return (['Em dia', 'Pgto do dia', 'Atrasado', 'Parcial'].includes(s) || isAtrasadoParcial) && filterByDate(c.vencimento);
+    return (['Em dia', 'Pgto do dia', 'Atrasado', 'Parcial'].includes(s) || contaAtrasada(c)) && filterByDate(c.vencimento);
   });
-  const valorReceber = receberPendente.reduce((a: number, c: any) => a + saldoConta(c), 0);
+  const valorReceber = receberPendente.reduce((a: number, c: any) => a + saldoRestante(c), 0);
 
   const pagarPendente = data.contasPagar.filter((c: any) => {
+    if (c.status === 'Pago' || c.status === 'Cancelado') return false;
     const s = calculateStatusAtrasado(c.vencimento, c.status);
-    return ['Em dia', 'Pgto do dia', 'Atrasado'].includes(s) && filterByDate(c.vencimento);
+    return (['Em dia', 'Pgto do dia', 'Atrasado', 'Parcial'].includes(s) || contaAtrasada(c)) && filterByDate(c.vencimento);
   });
-  const valorPagar = pagarPendente.reduce((a: number, v: any) => a + v.valor, 0);
+  const valorPagar = pagarPendente.reduce((a: number, c: any) => a + saldoRestante(c), 0);
 
   const saldo = valorReceber - valorPagar;
   const ticketMedio = vendasFiltradas.length > 0 ? valorVendas / vendasFiltradas.length : 0;
@@ -163,19 +159,16 @@ export function Dashboard({ data }: any) {
       (v.tarefas || []).filter((t: any) => !t.feita && t.prazo && new Date(t.prazo) < hoje).forEach(() => tarefasVencidas++);
     });
     if (tarefasVencidas > 0) items.push({ tipo: 'error', label: `${tarefasVencidas} tarefa(s) vencida(s)`, sub: 'Verifique o checklist nas vendas.' });
-    const atrasadosP = (data.contasPagar  || []).filter((c: any) => c.status === 'Atrasado').length;
+    const atrasadosP = (data.contasPagar  || []).filter((c: any) => contaAtrasada(c)).length;
     if (atrasadosP > 0) items.push({ tipo: 'error', label: `${atrasadosP} conta(s) a pagar em atraso`, sub: 'Verifique A Pagar.' });
     (data.contasReceber || [])
-      .filter((c: any) => calculateStatusAtrasado(c.vencimento, c.status) === 'Atrasado' ||
-        (c.status === 'Parcial' && calculateStatusAtrasado(c.vencimento, 'Pendente') === 'Atrasado'))
+      .filter((c: any) => contaAtrasada(c))
       .forEach((c: any) => {
-        const dias = Math.floor((hoje.getTime() - new Date(c.vencimento + 'T12:00:00').getTime()) / 86400000);
-        const pago = (c.pagamentos || []).reduce((s: number, p: any) => s + p.valor, 0);
-        const saldo = Math.max(0, c.valor - pago);
+        const dias = diasEmAtraso(c);
         items.push({
           tipo: 'error',
           label: `A Receber em atraso — ${c.cliente}`,
-          sub: `${dias} dia${dias !== 1 ? 's' : ''} em atraso · Saldo: ${formatCurrency(saldo)}`,
+          sub: `${dias} dia${dias !== 1 ? 's' : ''} em atraso · Saldo: ${formatCurrency(saldoRestante(c))}`,
         });
       });
     return items;
