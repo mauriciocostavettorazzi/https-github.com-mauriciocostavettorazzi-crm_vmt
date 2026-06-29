@@ -138,3 +138,52 @@ export const formatMonetaryInput = (value: string | number): string => {
   const num = parseMonetaryValue(value);
   return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
 };
+
+// ── Status da viagem (derivado das datas dos produtos da venda) ───────────────
+export type StatusViagem = 'Em breve' | 'Em andamento' | 'Concluído';
+
+// Datas só-dia (YYYY-MM-DD) viram início (00:00) ou fim (23:59:59) do dia.
+// Datas com hora (datetime-local "YYYY-MM-DDTHH:mm") são usadas como estão.
+const parseInicioMs = (s?: string): number | null => {
+  if (!s) return null;
+  const d = new Date(s.length <= 10 ? s + 'T00:00:00' : s);
+  return isNaN(d.getTime()) ? null : d.getTime();
+};
+const parseFimMs = (s?: string): number | null => {
+  if (!s) return null;
+  const d = new Date(s.length <= 10 ? s + 'T23:59:59' : s);
+  return isNaN(d.getTime()) ? null : d.getTime();
+};
+
+/**
+ * Calcula o status da viagem combinando as datas de todos os produtos da venda.
+ * - voos: dataPartida → dataChegada (com hora)
+ * - hospedagens: checkIn → checkOut (dia inteiro)
+ * - seguro: validade (dia inteiro — "em andamento" no dia, "concluído" depois)
+ * - aluguel: retiradaData → devolucaoData (com hora)
+ * Retorna null quando a venda não tem nenhuma data de produto.
+ */
+export const calcularStatusViagem = (venda: any, voos: any[] = []): StatusViagem | null => {
+  const inicios: number[] = [];
+  const fins: number[] = [];
+  const add = (ini: number | null, fim: number | null) => {
+    if (ini == null) return;
+    inicios.push(ini);
+    fins.push(fim ?? ini);
+  };
+
+  voos.forEach((v: any) => add(parseInicioMs(v.dataPartida), parseFimMs(v.dataChegada || v.dataPartida)));
+  (venda.hospedagens || []).forEach((h: any) => add(parseInicioMs(h.checkIn), parseFimMs(h.checkOut || h.checkIn)));
+  if (venda.seguro?.validade) add(parseInicioMs(venda.seguro.validade), parseFimMs(venda.seguro.validade));
+  if (venda.aluguel?.retiradaData) add(parseInicioMs(venda.aluguel.retiradaData), parseFimMs(venda.aluguel.devolucaoData || venda.aluguel.retiradaData));
+
+  if (inicios.length === 0) return null; // sem datas → indefinido
+
+  const inicioGeral = Math.min(...inicios);
+  const fimGeral = Math.max(...fins);
+  const agora = Date.now();
+
+  if (agora < inicioGeral) return 'Em breve';
+  if (agora > fimGeral) return 'Concluído';
+  return 'Em andamento';
+};

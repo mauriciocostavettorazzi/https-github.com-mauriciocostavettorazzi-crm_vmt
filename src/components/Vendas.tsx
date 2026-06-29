@@ -45,15 +45,29 @@ const DESTINOS_SUGESTOES = [
   'Maldivas','Sri Lanka',
   'Sydney, Austrália','Melbourne, Austrália','Auckland, Nova Zelândia',
 ];
-import { formatCurrency, maskCpfCnpj, generateId, parseMonetaryValue, formatMonetaryInput } from '../utils';
+import { formatCurrency, maskCpfCnpj, generateId, parseMonetaryValue, formatMonetaryInput, calcularStatusViagem } from '../utils';
 import { PlusCircle, Search, Trash2, Edit, XCircle, X, Filter, ShoppingCart, BedDouble, Users, CheckSquare, Square, Shield, Car, Paperclip, FileUp, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from '../toast';
 import { addDays } from 'date-fns';
 import { VendaOverviewModal } from './VendaOverviewModal';
 import { extractTextFromPdf, extractReservationData } from '../lib/extractPdf';
-import { saldoRestante, registrarPagamento, definirPagamentos } from '../lib/financeiro';
 import type { Lead, HospedagemItem } from '../types';
+
+// Badge automático de status da viagem (derivado das datas dos produtos)
+function StatusViagemBadge({ status }: { status: 'Em breve' | 'Em andamento' | 'Concluído' | null }) {
+  if (!status) return <span className="text-[10px] text-placeholder font-medium uppercase tracking-wider">Sem data</span>;
+  const cfg: Record<string, string> = {
+    'Em breve':      'bg-sky-900/30 text-sky-400 border border-sky-700',
+    'Em andamento':  'bg-emerald-900/30 text-emerald-400 border border-emerald-700',
+    'Concluído':     'bg-surface-alt text-muted border border-border',
+  };
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-[10px] uppercase font-black tracking-wider leading-none whitespace-nowrap ${cfg[status]}`}>
+      {status}
+    </span>
+  );
+}
 
 export function Vendas({ data, updateData, setActiveTab }: any) {
   const [activeSection, setActiveSection] = useState<'vendas' | 'leads'>('vendas');
@@ -404,47 +418,6 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
       setVendaToCancel(null);
   };
 
-  const toggleVendaStatus = (id: string, campo: 'statusP' | 'statusR' | 'statusV') => {
-    const venda = data.vendas.find((v: any) => v.id === id);
-    if (!venda) return;
-    
-    const newValue = !venda[campo];
-    
-    const hoje = new Date().toISOString().substring(0, 10);
-    let updatedContasPagar = data.contasPagar;
-    let updatedContasReceber = data.contasReceber;
-
-    if (campo === 'statusP') {
-      updatedContasPagar = data.contasPagar.map((cp: any) => {
-        if (cp.vendaId !== id) return cp;
-        if (newValue) {
-          // marca como pago: registra o saldo restante como pagamento (data de hoje)
-          const saldo = saldoRestante(cp);
-          return saldo > 0.009 ? registrarPagamento(cp, { data: hoje, valor: saldo }, 'pagar') : { ...cp, status: 'Pago' };
-        }
-        // desmarca: limpa pagamentos e volta a Pendente
-        return definirPagamentos(cp, [], 'pagar');
-      });
-    } else if (campo === 'statusR') {
-      updatedContasReceber = data.contasReceber.map((cr: any) => {
-        if (cr.vendaId !== id) return cr;
-        if (newValue) {
-          // marca como recebido: registra o saldo restante como pagamento (data de hoje)
-          const saldo = saldoRestante(cr);
-          return saldo > 0.009 ? registrarPagamento(cr, { data: hoje, valor: saldo }, 'receber') : { ...cr, status: 'Recebido' };
-        }
-        // desmarca: limpa pagamentos e volta a Pendente
-        return definirPagamentos(cr, [], 'receber');
-      });
-    }
-    
-    updateData({
-      vendas: data.vendas.map((v: any) => v.id === id ? { ...v, [campo]: newValue } : v),
-      contasPagar: updatedContasPagar,
-      contasReceber: updatedContasReceber
-    });
-  };
-
   const searchFilter = (v: any) => {
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
@@ -456,7 +429,10 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
     );
   };
 
-  const vendasAtivasBase = data.vendas.filter((v: any) => !(v.statusP && v.statusR && v.statusV));
+  // Status da viagem é derivado das datas dos produtos (voos, hospedagem, seguro, aluguel)
+  const statusViagemDe = (v: any) => calcularStatusViagem(v, data.voos.filter((vo: any) => vo.vendaId === v.id));
+
+  const vendasAtivasBase = data.vendas.filter((v: any) => statusViagemDe(v) !== 'Concluído');
   const vendasAtivas = [...vendasAtivasBase].filter(searchFilter).sort((a: any, b: any) => {
     let valA = a[sortCol];
     let valB = b[sortCol];
@@ -473,7 +449,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
     return 0;
   });
 
-  const vendasAnterioresBase = data.vendas.filter((v: any) => v.statusP && v.statusR && v.statusV);
+  const vendasAnterioresBase = data.vendas.filter((v: any) => statusViagemDe(v) === 'Concluído');
   const vendasAnteriores = [...vendasAnterioresBase].filter(searchFilter).sort((a: any, b: any) => {
     let valA = a[sortCol];
     let valB = b[sortCol];
@@ -1314,12 +1290,12 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                     <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" placeholder="SUV, Básico..." value={formData.aluguel.modelo || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, modelo: e.target.value } })} /></div>
                   <div><label className="block text-xs font-bold text-muted uppercase mb-1">Local de Retirada</label>
                     <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.retiradaLocal || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, retiradaLocal: e.target.value } })} /></div>
-                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Data de Retirada</label>
-                    <input type="date" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.retiradaData || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, retiradaData: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Data e Hora de Retirada</label>
+                    <input type="datetime-local" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.retiradaData || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, retiradaData: e.target.value } })} /></div>
                   <div><label className="block text-xs font-bold text-muted uppercase mb-1">Local de Devolução</label>
                     <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.devolucaoLocal || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, devolucaoLocal: e.target.value } })} /></div>
-                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Data de Devolução</label>
-                    <input type="date" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.devolucaoData || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, devolucaoData: e.target.value } })} /></div>
+                  <div><label className="block text-xs font-bold text-muted uppercase mb-1">Data e Hora de Devolução</label>
+                    <input type="datetime-local" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.devolucaoData || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, devolucaoData: e.target.value } })} /></div>
                   <div className="col-span-2 md:col-span-2"><label className="block text-xs font-bold text-muted uppercase mb-1">Observações</label>
                     <input type="text" className="w-full border border-border-hover rounded p-1.5 text-sm" value={formData.aluguel.observacoes || ''} onChange={e => setFormData({ ...formData, aluguel: { ...formData.aluguel, observacoes: e.target.value } })} /></div>
               </div>
@@ -1433,7 +1409,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                 <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('cliente')}>Cliente {sortCol === 'cliente' && (sortAsc ? '↑' : '↓')}</th>
                 <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('tipo')}>Tipo {sortCol === 'tipo' && (sortAsc ? '↑' : '↓')}</th>
                 <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('valorBruto')}>Valor {sortCol === 'valorBruto' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 text-center tooltip truncate">Progresso</th>
+                <th className="px-4 py-3 text-center tooltip truncate">Status da Viagem</th>
                 <th className="px-4 py-3 text-center truncate">Ações</th>
               </tr>
             </thead>
@@ -1447,23 +1423,9 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                    <td className="px-4 py-3 text-primary font-bold uppercase">{v.cliente}</td>
                    <td className="px-4 py-3 font-medium text-muted">{v.tipo}</td>
                    <td className="px-4 py-3 font-black text-primary">{formatCurrency(v.valorBruto)}</td>
-                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-center space-x-2">
-                       <button 
-                         onClick={() => toggleVendaStatus(v.id, 'statusP')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-colors tooltip ${v.statusP ? 'bg-[#1D9E75] text-white' : 'bg-surface-alt text-muted border border-border hover:bg-surface-hover'}`}
-                         title="P: Valor Pago (Fornecedor)"
-                       >P</button>
-                       <button 
-                         onClick={() => toggleVendaStatus(v.id, 'statusR')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-colors tooltip ${v.statusR ? 'bg-[#1D9E75] text-white' : 'bg-surface-alt text-muted border border-border hover:bg-surface-hover'}`}
-                         title="R: Valor Recebido (Cliente)"
-                       >R</button>
-                       <button 
-                         onClick={() => toggleVendaStatus(v.id, 'statusV')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-colors tooltip ${v.statusV ? 'bg-[#1D9E75] text-white' : 'bg-surface-alt text-muted border border-border hover:bg-surface-hover'}`}
-                         title="V: Voado / Concluído"
-                       >V</button>
+                   <td className="px-4 py-3">
+                    <div className="flex items-center justify-center">
+                       <StatusViagemBadge status={statusViagemDe(v)} />
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
@@ -1504,7 +1466,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                 <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('cliente')}>Cliente {sortCol === 'cliente' && (sortAsc ? '↑' : '↓')}</th>
                 <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('tipo')}>Tipo {sortCol === 'tipo' && (sortAsc ? '↑' : '↓')}</th>
                 <th className="px-4 py-3 cursor-pointer hover:text-muted truncate" onClick={() => toggleSort('valorBruto')}>Valor {sortCol === 'valorBruto' && (sortAsc ? '↑' : '↓')}</th>
-                <th className="px-4 py-3 text-center tooltip truncate">Progresso</th>
+                <th className="px-4 py-3 text-center tooltip truncate">Status da Viagem</th>
                 <th className="px-4 py-3 text-center truncate">Ações</th>
               </tr>
             </thead>
@@ -1518,23 +1480,9 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                   <td className="px-4 py-3 text-muted font-bold uppercase">{v.cliente}</td>
                   <td className="px-4 py-3 font-medium text-muted">{v.tipo}</td>
                   <td className="px-4 py-3 font-black text-muted">{formatCurrency(v.valorBruto)}</td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-center space-x-2 grayscale">
-                       <button 
-                         onClick={() => toggleVendaStatus(v.id, 'statusP')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm tooltip bg-[#1D9E75] text-white`}
-                         title="P: Valor Pago (Fornecedor)"
-                       >P</button>
-                       <button 
-                         onClick={() => toggleVendaStatus(v.id, 'statusR')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm tooltip bg-[#1D9E75] text-white`}
-                         title="R: Valor Recebido (Cliente)"
-                       >R</button>
-                       <button 
-                         onClick={() => toggleVendaStatus(v.id, 'statusV')}
-                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm tooltip bg-[#1D9E75] text-white`}
-                         title="V: Voado / Concluído"
-                       >V</button>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center">
+                       <StatusViagemBadge status={statusViagemDe(v)} />
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
