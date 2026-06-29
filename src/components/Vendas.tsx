@@ -51,7 +51,6 @@ import { supabase } from '../lib/supabase';
 import { toast } from '../toast';
 import { addDays } from 'date-fns';
 import { VendaOverviewModal } from './VendaOverviewModal';
-import { LeadsFunil } from './LeadsFunil';
 import { extractTextFromPdf, extractReservationData } from '../lib/extractPdf';
 import type { Lead, HospedagemItem } from '../types';
 
@@ -495,7 +494,6 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
   return (
     <div className="space-y-6">
       {/* Funil de Leads temporariamente desativado — preservado para implementação futura */}
-      {/* activeSection === 'leads' && <LeadsFunil ... /> */}
 
       {true && <>
       <div className="flex justify-end">

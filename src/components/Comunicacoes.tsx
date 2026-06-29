@@ -462,7 +462,7 @@ export function Comunicacoes({ data, updateData }: any) {
                     'bg-surface-alt text-muted border-border'}`}>{TIPO_LABEL[tpl.tipo]}</span>
                   <p className="text-xs text-muted line-clamp-3 whitespace-pre-line">{tpl.texto}</p>
                   <p className="text-[10px] text-placeholder">
-                    Variáveis: {'{'}{'{'}}nome{'}'}{'}'}, {'{'}{'{'}}voo{'}'}{'}'}, {'{'}{'{'}}trecho{'}'}{'}'}, {'{'}{'{'}}data{'}'}{'}'}, {'{'}{'{'}}localizador{'}'}{'}'}, {'{'}{'{'}}destino{'}'}{'}'}
+                    {'Variáveis: {{nome}}, {{voo}}, {{trecho}}, {{data}}, {{localizador}}, {{destino}}'}
                   </p>
                 </div>
               );

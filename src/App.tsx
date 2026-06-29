@@ -2,12 +2,10 @@ import { useState, useEffect } from 'react';
 import { useCRMStore } from './store';
 import { Dashboard } from './components/Dashboard';
 import { Vendas } from './components/Vendas';
-import { Voos } from './components/Voos';
 import { ContasReceber } from './components/ContasReceber';
 import { ContasPagar } from './components/ContasPagar';
 import { Pessoas } from './components/Pessoas';
 import { Acompanhamento } from './components/Acompanhamento';
-// import { Cotacoes } from './components/Cotacoes'; // desativado temporariamente
 import { Calendario } from './components/Calendario';
 import { Comissoes } from './components/Comissoes';
 import { Comunicacoes } from './components/Comunicacoes';
@@ -306,7 +304,6 @@ export default function App() {
             {activeTab === 'receber'      && <ContasReceber data={data} updateData={updateData} />}
             {activeTab === 'pagar'        && <ContasPagar  data={data} updateData={updateData} />}
             {activeTab === 'pessoas'      && <Pessoas      data={data} updateData={updateData} />}
-            {/* {activeTab === 'cotacoes' && <Cotacoes data={data} updateData={updateData} />} */}
             {activeTab === 'calendario'   && <Calendario   data={data} />}
             {activeTab === 'comissoes'    && <Comissoes    data={data} updateData={updateData} />}
             {activeTab === 'comunicacoes' && <Comunicacoes data={data} updateData={updateData} />}
