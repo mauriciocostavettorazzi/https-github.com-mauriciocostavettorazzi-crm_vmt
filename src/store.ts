@@ -74,6 +74,13 @@ function migrateToFessoas(raw: any): any[] {
 
 function parseData(raw: any): CRMData {
   if (!raw) return INITIAL_DATA;
+  // Mapa vendaId → data de criação da venda (para herdar criadoEm em contas antigas)
+  const vendaCriadoEm: Record<string, string> = {};
+  (raw.vendas || []).forEach((v: any) => { if (v?.id) vendaCriadoEm[v.id] = v.criadoEm; });
+  // Contas antigas sem criadoEm herdam a data da venda (ou o vencimento como fallback)
+  const garantirCriadoEm = (c: any) => c.criadoEm
+    ? c
+    : { ...c, criadoEm: (c.vendaId && vendaCriadoEm[c.vendaId]) || c.vencimento || new Date().toISOString() };
   return {
     ...INITIAL_DATA,
     ...raw,
@@ -84,11 +91,11 @@ function parseData(raw: any): CRMData {
     mensagensWpp: raw.mensagensWpp || [],
     templatesWpp: raw.templatesWpp || [],
     contasReceber: (raw.contasReceber || []).map((c: any) => ({
-      ...c,
+      ...garantirCriadoEm(c),
       status: calculateStatusAtrasado(c.vencimento, c.status) as any
     })),
     contasPagar: (raw.contasPagar || []).map((c: any) => ({
-      ...c,
+      ...garantirCriadoEm(c),
       status: calculateStatusAtrasado(c.vencimento, c.status) as any
     }))
   };

@@ -283,7 +283,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
       cliente: formData.cliente,
       valor: valorBruto,
       vencimento: formData.receberVencimento,
-      status: prevReceber?.status || 'Pendente'
+      status: prevReceber?.status || 'Pendente',
+      criadoEm: prevReceber?.criadoEm || novaVenda.criadoEm || new Date().toISOString(),
     };
 
     // A Pagar
@@ -299,7 +300,8 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
            categoria: formData.tipo === 'Passagem Aérea' ? 'Passagem' : (formData.tipo === 'Hotel' ? 'Hospedagem' : 'Serviços'),
            valor: parseMonetaryValue(p.valor),
            vencimento: p.vencimento,
-           status: prev ? prev.status : 'Pendente'
+           status: prev ? prev.status : 'Pendente',
+           criadoEm: prev?.criadoEm || novaVenda.criadoEm || new Date().toISOString(),
          };
        });
     }

@@ -19,15 +19,18 @@ const STATUS_QUITADO: Record<TipoConta, string> = {
 // ── Leitura ────────────────────────────────────────────────────────────────
 
 /** Lista de pagamentos da conta, normalizando campos legados. */
+// Normaliza qualquer data (ISO completo ou YYYY-MM-DD) para YYYY-MM-DD
+const soData = (s?: string) => (s || '').substring(0, 10);
+
 export function pagamentosDe(c: any): Pagamento[] {
   if (Array.isArray(c?.pagamentos) && c.pagamentos.length > 0) return c.pagamentos;
   // legado A Receber / Comissão: valorRecebido único
   if (c?.valorRecebido != null && c.valorRecebido > 0)
-    return [{ data: c.dataRecebida || c.dataRecebimento || c.dataPagamento || '', valor: c.valorRecebido }];
-  // legado quitação total (status Pago/Recebido sem histórico) —
-  // usa vencimento como última data de fallback p/ não sumir do fluxo de caixa
+    return [{ data: soData(c.dataRecebida || c.dataRecebimento || c.dataPagamento || c.criadoEm), valor: c.valorRecebido }];
+  // legado quitação total (status Pago/Recebido sem histórico) — sem data de baixa real,
+  // usa a data de lançamento (criadoEm) e só então o vencimento, para cair no caixa do mês certo
   if ((c?.status === 'Pago' || c?.status === 'Recebido' || c?.status === 'Recebida') && c?.valor)
-    return [{ data: c.dataPagamento || c.dataRecebimento || c.dataRecebida || c.vencimento || '', valor: c.valor }];
+    return [{ data: soData(c.dataPagamento || c.dataRecebimento || c.dataRecebida || c.criadoEm || c.vencimento), valor: c.valor }];
   return [];
 }
 
