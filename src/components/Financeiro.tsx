@@ -62,10 +62,8 @@ export function Financeiro({ data }: any) {
         if (p.data && p.valor) movs.push({ data: p.data, tipo: 'entrada', valor: p.valor, descricao: c.cliente, origem: 'A Receber' });
       });
     });
-    // Entradas — comissões recebidas
-    (data.comissoes || []).forEach((c: any) => {
-      if (c.valorRecebido && c.dataRecebida) movs.push({ data: c.dataRecebida, tipo: 'entrada', valor: c.valorRecebido, descricao: c.fornecedor, origem: 'Comissão' });
-    });
+    // Obs.: comissão é a MARGEM (valor total − custo), já implícita em A Receber − A Pagar.
+    // Não entra como movimento próprio no caixa para não contar o lucro duas vezes.
     // Saídas — títulos a pagar baixados (cada pagamento)
     (data.contasPagar || []).forEach((c: any) => {
       pagamentosDe(c).forEach((p: any) => {
@@ -129,11 +127,12 @@ export function Financeiro({ data }: any) {
     const aPagar = (data.contasPagar || [])
       .filter((c: any) => c.status !== 'Pago' && c.status !== 'Cancelado')
       .reduce((s: number, c: any) => s + saldoRestante(c), 0);
-    const comissoesAReceber = (data.comissoes || [])
-      .filter((c: any) => c.status === 'Pendente' || c.status === 'Parcial')
-      .reduce((s: number, c: any) => s + Math.max(0, (c.valorEsperado || 0) - (c.valorRecebido || 0)), 0);
-    const posicaoLiquida = aReceber + comissoesAReceber - aPagar;
-    return { aReceber, aPagar, comissoesAReceber, posicaoLiquida };
+    // Margem prevista = soma das comissões (já é o resultado de A Receber − A Pagar; NÃO soma na posição p/ não duplicar)
+    const margemPrevista = (data.comissoes || [])
+      .filter((c: any) => c.status !== 'Cancelada')
+      .reduce((s: number, c: any) => s + (c.valorEsperado || 0), 0);
+    const posicaoLiquida = aReceber - aPagar;
+    return { aReceber, aPagar, margemPrevista, posicaoLiquida };
   }, [data]);
 
   const periodoLabel = periodo === 'mes' ? 'este mês' : periodo === 'ano' ? 'este ano' : periodo === 'tudo' ? 'todo o período' : 'período selecionado';
@@ -273,9 +272,9 @@ export function Financeiro({ data }: any) {
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Kpi label="A Receber (aberto)" value={formatCurrency(consolidado.aReceber)} icon={ArrowDownCircle} color={C.teal} />
-            <Kpi label="Comissões a Receber" value={formatCurrency(consolidado.comissoesAReceber)} icon={Percent} color={C.cyan} />
             <Kpi label="A Pagar (aberto)" value={formatCurrency(consolidado.aPagar)} icon={ArrowUpCircle} color={C.red} />
-            <Kpi label="Posição Líquida" value={formatCurrency(consolidado.posicaoLiquida)} icon={Scale} color={consolidado.posicaoLiquida >= 0 ? C.magenta : C.red} sub="A receber + comissões − a pagar" />
+            <Kpi label="Margem das Vendas" value={formatCurrency(consolidado.margemPrevista)} icon={Percent} color={C.cyan} sub="Comissão total" />
+            <Kpi label="Posição Líquida" value={formatCurrency(consolidado.posicaoLiquida)} icon={Scale} color={consolidado.posicaoLiquida >= 0 ? C.magenta : C.red} sub="A receber − a pagar" />
           </div>
 
           <div className="rounded-[18px] p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
@@ -285,8 +284,8 @@ export function Financeiro({ data }: any) {
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--bg-surface-alt)' }}>
-                <span className="text-sm font-semibold" style={{ color: C.teal }}>Total a entrar (clientes + comissões)</span>
-                <span className="font-display font-bold" style={{ color: C.teal }}>{formatCurrency(consolidado.aReceber + consolidado.comissoesAReceber)}</span>
+                <span className="text-sm font-semibold" style={{ color: C.teal }}>Total a entrar (clientes)</span>
+                <span className="font-display font-bold" style={{ color: C.teal }}>{formatCurrency(consolidado.aReceber)}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--bg-surface-alt)' }}>
                 <span className="text-sm font-semibold" style={{ color: C.red }}>Total a sair (fornecedores)</span>

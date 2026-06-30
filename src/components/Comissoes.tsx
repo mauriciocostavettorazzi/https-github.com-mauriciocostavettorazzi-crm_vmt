@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import { formatCurrency, generateId } from '../utils';
+import { formatCurrency, generateId, parseMonetaryValue, formatMonetaryInput } from '../utils';
 import { toast } from '../toast';
-import { PlusCircle, X, CheckCircle, DollarSign, Clock, XCircle, Trash2, Edit } from 'lucide-react';
+import { PlusCircle, X, CheckCircle, DollarSign, Clock, XCircle, Trash2, Edit, History, Pencil } from 'lucide-react';
 import type { Comissao } from '../types';
+import { pagamentosDe } from '../lib/financeiro';
+
+// Comissão usa valorEsperado como base — helpers de saldo via pagamentos[]
+const recebidoDe = (c: any): number => pagamentosDe(c).reduce((s: number, p: any) => s + (p.valor || 0), 0);
+const saldoDe = (c: any): number => Math.max(0, (c.valorEsperado || 0) - recebidoDe(c));
 
 const STATUS_STYLE: Record<Comissao['status'], { color: string; bg: string; Icon: any }> = {
   Pendente:  { color: 'text-amber-400',   bg: 'bg-amber-900/30 border-amber-700',   Icon: Clock },
@@ -29,6 +34,11 @@ export function Comissoes({ data, updateData }: any) {
   const [baixarId, setBaixarId] = useState<string | null>(null);
   const [baixarValor, setBaixarValor] = useState('');
   const [baixarData, setBaixarData] = useState(new Date().toISOString().substring(0, 10));
+  // Gerenciar pagamentos
+  const [managingId, setManagingId] = useState<string | null>(null);
+  const [editingPgtoIdx, setEditingPgtoIdx] = useState<number | null>(null);
+  const [editPgtoData, setEditPgtoData] = useState('');
+  const [editPgtoValor, setEditPgtoValor] = useState('');
 
   const fd = (p: any) => setFormData(f => ({ ...f, ...p }));
 
@@ -49,14 +59,40 @@ export function Comissoes({ data, updateData }: any) {
     setShowForm(false);
   };
 
+  const openBaixar = (c: any) => { setBaixarId(c.id); setBaixarValor(formatMonetaryInput(saldoDe(c))); setBaixarData(new Date().toISOString().substring(0, 10)); };
+
   const handleBaixar = () => {
     const c = comissoes.find(x => x.id === baixarId);
     if (!c) return;
-    const valor = Number(baixarValor.replace(',', '.'));
-    const status: Comissao['status'] = valor >= c.valorEsperado ? 'Recebida' : 'Parcial';
-    updateData({ comissoes: comissoes.map(x => x.id === baixarId ? { ...x, valorRecebido: valor, dataRecebida: baixarData, status } : x) });
-    toast(status === 'Recebida' ? 'Comissão baixada como Recebida!' : 'Comissão baixada como Parcial.', 'info');
+    const valor = parseMonetaryValue(baixarValor);
+    if (valor <= 0) return;
+    const pagamentos = [...pagamentosDe(c), { data: baixarData, valor }];
+    const total = pagamentos.reduce((s, p) => s + p.valor, 0);
+    const quitada = total >= (c.valorEsperado || 0) - 0.009;
+    updateData({ comissoes: comissoes.map(x => x.id === baixarId ? {
+      ...x, pagamentos, valorRecebido: undefined,
+      status: quitada ? 'Recebida' : 'Parcial',
+      dataRecebida: quitada ? baixarData : undefined,
+    } as any : x) });
+    toast(quitada ? 'Comissão recebida!' : `Recebimento parcial registrado. Saldo: ${formatCurrency((c.valorEsperado||0) - total)}`, 'info');
     setBaixarId(null);
+  };
+
+  // Gerenciar pagamentos da comissão
+  const openManage = (c: any) => { setManagingId(c.id); setEditingPgtoIdx(null); };
+  const setPagamentos = (id: string, novos: any[]) => {
+    const c = comissoes.find(x => x.id === id);
+    if (!c) return;
+    const total = novos.reduce((s, p) => s + p.valor, 0);
+    const status: Comissao['status'] = novos.length === 0 ? 'Pendente' : total >= (c.valorEsperado || 0) - 0.009 ? 'Recebida' : 'Parcial';
+    updateData({ comissoes: comissoes.map(x => x.id === id ? { ...x, pagamentos: novos, valorRecebido: undefined, status, dataRecebida: status === 'Recebida' ? novos[novos.length-1]?.data : undefined } as any : x) });
+  };
+  const deletePgto = (id: string, idx: number) => { setPagamentos(id, pagamentosDe(comissoes.find(x=>x.id===id)).filter((_,i)=>i!==idx)); if (editingPgtoIdx===idx) setEditingPgtoIdx(null); toast('Pagamento removido.','info'); };
+  const saveEditPgto = (id: string, idx: number) => {
+    const valor = parseMonetaryValue(editPgtoValor);
+    if (valor <= 0 || !editPgtoData) return;
+    setPagamentos(id, pagamentosDe(comissoes.find(x=>x.id===id)).map((p,i)=> i===idx ? { data: editPgtoData, valor } : p));
+    setEditingPgtoIdx(null); toast('Pagamento atualizado.');
   };
 
   const confirmDelete = () => {
@@ -88,9 +124,9 @@ export function Comissoes({ data, updateData }: any) {
   const filtered = filterStatus === 'todos' ? comissoes : comissoes.filter(c => c.status === filterStatus);
 
   const totalEsperado = comissoes.filter(c => c.status !== 'Cancelada').reduce((s, c) => s + c.valorEsperado, 0);
-  const totalRecebido = comissoes.filter(c => c.valorRecebido).reduce((s, c) => s + (c.valorRecebido || 0), 0);
+  const totalRecebido = comissoes.reduce((s, c) => s + recebidoDe(c), 0);
   const pendente = comissoes.filter(c => c.status === 'Pendente').reduce((s, c) => s + c.valorEsperado, 0);
-  const parcial = comissoes.filter(c => c.status === 'Parcial').reduce((s, c) => s + (c.valorEsperado - (c.valorRecebido || 0)), 0);
+  const parcial = comissoes.filter(c => c.status === 'Parcial').reduce((s, c) => s + saldoDe(c), 0);
 
   return (
     <div className="space-y-6">
@@ -157,8 +193,11 @@ export function Comissoes({ data, updateData }: any) {
                   <td className="px-4 py-3 text-xs font-mono text-muted">{venda ? `${venda.cliente} — ${venda.numeroPedido || venda.id.slice(0,6)}` : '—'}</td>
                   <td className="px-4 py-3 font-black text-primary">{formatCurrency(c.valorEsperado)}</td>
                   <td className="px-4 py-3">
-                    {c.valorRecebido != null ? (
-                      <span className={`font-bold ${c.valorRecebido >= c.valorEsperado ? 'text-emerald-400' : 'text-amber-400'}`}>{formatCurrency(c.valorRecebido)}</span>
+                    {recebidoDe(c) > 0 ? (
+                      <div>
+                        <span className={`font-bold ${saldoDe(c) <= 0.009 ? 'text-emerald-400' : 'text-amber-400'}`}>{formatCurrency(recebidoDe(c))}</span>
+                        {saldoDe(c) > 0.009 && <p className="text-[10px] text-muted">Saldo: {formatCurrency(saldoDe(c))}</p>}
+                      </div>
                     ) : <span className="text-muted">—</span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted">
@@ -172,10 +211,14 @@ export function Comissoes({ data, updateData }: any) {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1.5">
-                      {c.status === 'Pendente' || c.status === 'Parcial' ? (
-                        <button onClick={() => { setBaixarId(c.id); setBaixarValor(String(c.valorEsperado)); setBaixarData(new Date().toISOString().substring(0,10)); }}
+                      {(c.status === 'Pendente' || c.status === 'Parcial') && (
+                        <button onClick={() => openBaixar(c)}
                           className="bg-emerald-900/30 text-emerald-400 px-2 py-1 rounded text-[10px] font-bold uppercase hover:bg-emerald-900/50">Baixar</button>
-                      ) : null}
+                      )}
+                      {(c.status === 'Parcial' || c.status === 'Recebida') && (
+                        <button onClick={() => openManage(c)} title="Ver / editar recebimentos"
+                          className="bg-sky-900/30 text-sky-400 p-1.5 rounded hover:bg-sky-900/50"><History size={13} /></button>
+                      )}
                       <button onClick={() => openEdit(c)} className="bg-blue-900/30 text-blue-400 p-1.5 rounded hover:bg-blue-900/50"><Edit size={13} /></button>
                       <button onClick={() => setComToDelete(c)} className="bg-red-900/30 text-red-400 p-1.5 rounded hover:bg-red-900/50"><Trash2 size={13} /></button>
                     </div>
@@ -226,19 +269,92 @@ export function Comissoes({ data, updateData }: any) {
       )}
 
       {/* Baixar modal */}
-      {baixarId && (
+      {baixarId && (() => {
+        const c = comissoes.find(x => x.id === baixarId);
+        if (!c) return null;
+        const valorInput = parseMonetaryValue(baixarValor);
+        const saldoApos = Math.max(0, saldoDe(c) - valorInput);
+        const ehParcial = valorInput > 0 && saldoApos > 0.009;
+        return (
         <div className="fixed inset-0 bg-slate-900/70 z-[200] flex items-center justify-center p-4">
           <div className="bg-surface rounded-2xl p-6 border border-border max-w-sm w-full space-y-4">
-            <h3 className="font-black text-primary uppercase tracking-wider">Baixar Comissão</h3>
-            <div><label className={labelCls}>Valor Recebido (R$)</label><input type="number" min="0" step="0.01" className={inputCls} value={baixarValor} onChange={e=>setBaixarValor(e.target.value)}/></div>
+            <h3 className="font-black text-primary uppercase tracking-wider">Receber Comissão</h3>
+            <div className="bg-surface-alt rounded-xl p-3 border border-border text-xs">
+              <div className="flex justify-between"><span className="text-muted">Margem esperada</span><span className="font-bold text-primary">{formatCurrency(c.valorEsperado)}</span></div>
+              {recebidoDe(c) > 0 && <div className="flex justify-between mt-1"><span className="text-muted">Já recebido</span><span className="font-bold text-emerald-400">{formatCurrency(recebidoDe(c))} · Saldo {formatCurrency(saldoDe(c))}</span></div>}
+            </div>
+            <div><label className={labelCls}>Valor Recebido (R$)</label>
+              <input type="text" inputMode="numeric" className={inputCls} value={baixarValor} onChange={e=>setBaixarValor(formatMonetaryInput(e.target.value))}/>
+              {valorInput > 0 && (
+                <div className={`mt-2 px-3 py-2 rounded-lg text-xs font-bold flex justify-between ${ehParcial ? 'bg-amber-900/20 text-amber-400 border border-amber-800' : 'bg-emerald-900/20 text-emerald-400 border border-emerald-800'}`}>
+                  {ehParcial ? <><span>Recebimento parcial</span><span>Saldo: {formatCurrency(saldoApos)}</span></> : <span>Comissão totalmente recebida</span>}
+                </div>
+              )}
+            </div>
             <div><label className={labelCls}>Data do Recebimento</label><input type="date" className={inputCls} value={baixarData} onChange={e=>setBaixarData(e.target.value)}/></div>
             <div className="flex justify-end gap-3">
               <button onClick={()=>setBaixarId(null)} className="px-4 py-2 border border-border rounded-lg text-muted font-bold">Cancelar</button>
-              <button onClick={handleBaixar} className="px-4 py-2 bg-[#1D9E75] text-white rounded-lg font-bold">Confirmar</button>
+              <button onClick={handleBaixar} disabled={valorInput <= 0} className="px-4 py-2 bg-[#1D9E75] text-white rounded-lg font-bold disabled:opacity-40">Confirmar</button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
+
+      {/* Gerenciar recebimentos */}
+      {managingId && (() => {
+        const c = comissoes.find(x => x.id === managingId);
+        if (!c) return null;
+        const pagamentos = pagamentosDe(c);
+        return (
+          <div className="fixed inset-0 bg-slate-900/70 z-[200] flex items-center justify-center p-4">
+            <div className="bg-surface rounded-2xl border border-border max-w-md w-full overflow-hidden">
+              <div className="p-4 border-b border-border bg-surface-alt flex justify-between items-center">
+                <h3 className="text-sm font-black text-primary uppercase tracking-wider flex items-center gap-2"><History size={16} className="text-sky-400"/> Recebimentos da Comissão</h3>
+                <button onClick={()=>{setManagingId(null);setEditingPgtoIdx(null);}} className="text-placeholder hover:text-primary text-xl leading-none">&times;</button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="bg-surface-alt rounded-xl p-3 border border-border text-xs space-y-1">
+                  <div className="flex justify-between"><span className="text-muted">Margem esperada</span><span className="font-bold text-primary">{formatCurrency(c.valorEsperado)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">Total recebido</span><span className="font-bold text-emerald-400">{formatCurrency(recebidoDe(c))}</span></div>
+                  <div className="flex justify-between border-t border-border pt-1 mt-1"><span className="text-muted font-bold">Saldo</span><span className={`font-black ${saldoDe(c) > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{formatCurrency(saldoDe(c))}</span></div>
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {pagamentos.length === 0 && <p className="text-xs text-muted text-center py-4">Nenhum recebimento registrado.</p>}
+                  {pagamentos.map((p: any, i: number) => (
+                    <div key={i} className="bg-surface-alt border border-border rounded-lg overflow-hidden">
+                      {editingPgtoIdx === i ? (
+                        <div className="p-3 space-y-2">
+                          <div className="flex gap-2">
+                            <input type="date" value={editPgtoData} onChange={e=>setEditPgtoData(e.target.value)} className="flex-1 border border-border-hover rounded bg-surface text-primary p-1.5 text-xs focus:outline-none"/>
+                            <input type="text" inputMode="numeric" value={editPgtoValor} onChange={e=>setEditPgtoValor(formatMonetaryInput(e.target.value))} className="flex-1 border border-border-hover rounded bg-surface text-primary p-1.5 text-xs font-mono focus:outline-none"/>
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={()=>setEditingPgtoIdx(null)} className="text-[10px] px-3 py-1 border border-border rounded text-muted">Cancelar</button>
+                            <button onClick={()=>saveEditPgto(c.id, i)} className="text-[10px] px-3 py-1 bg-[#1D9E75] text-white rounded font-bold">Salvar</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between px-3 py-2.5">
+                          <div>
+                            <p className="text-xs font-bold text-primary">{formatCurrency(p.valor)}</p>
+                            <p className="text-[10px] text-muted">{p.data ? new Date(p.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</p>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <button onClick={()=>{setEditingPgtoIdx(i);setEditPgtoData(p.data);setEditPgtoValor(formatMonetaryInput(p.valor));}} className="p-1.5 bg-surface hover:bg-surface-hover rounded text-blue-400"><Pencil size={13}/></button>
+                            <button onClick={()=>deletePgto(c.id, i)} className="p-1.5 bg-surface hover:bg-red-900/40 rounded text-red-400"><Trash2 size={13}/></button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end"><button onClick={()=>{setManagingId(null);setEditingPgtoIdx(null);}} className="px-4 py-2 border border-border rounded-lg text-muted font-bold text-sm">Fechar</button></div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Delete confirm */}
       {comToDelete && (
