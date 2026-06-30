@@ -61,9 +61,17 @@ export default function App() {
 
   const currentLabel = ALL_MENU.find(m => m.id === activeTab)?.label ?? '';
 
-  // badge counts
-  const receber = (data.contasReceber || []).filter((c: any) => c.status !== 'Recebido').length;
-  const pagar   = (data.contasPagar  || []).filter((c: any) => c.status !== 'Pago').length;
+  // badge counts — só do mês atual + atrasados (evita assustar com recorrentes/títulos futuros)
+  const _hoje = new Date();
+  const venceNoMesOuVencido = (c: any) => {
+    if (!c.vencimento) return false;
+    const d = new Date(c.vencimento.length <= 10 ? c.vencimento + 'T12:00:00' : c.vencimento);
+    const noMes = d.getMonth() === _hoje.getMonth() && d.getFullYear() === _hoje.getFullYear();
+    const vencido = d < _hoje && !(d.getMonth() === _hoje.getMonth() && d.getFullYear() === _hoje.getFullYear() && d.getDate() === _hoje.getDate());
+    return noMes || vencido;
+  };
+  const receber = (data.contasReceber || []).filter((c: any) => c.status !== 'Recebido' && c.status !== 'Cancelado' && venceNoMesOuVencido(c)).length;
+  const pagar   = (data.contasPagar  || []).filter((c: any) => c.status !== 'Pago' && c.status !== 'Cancelado' && venceNoMesOuVencido(c)).length;
   const wpp     = (data.mensagensWpp || []).filter((m: any) => m.status === 'pendente').length;
 
   const badges: Record<string, { count: number; color: string }> = {

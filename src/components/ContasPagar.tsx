@@ -9,6 +9,9 @@ export function ContasPagar({ data, updateData }: any) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [view, setView] = useState<'pendentes' | 'pagos'>('pendentes');
   const [searchTerm, setSearchTerm] = useState('');
+  const [periodo, setPeriodo] = useState<'mes' | 'ano' | 'tudo' | 'personalizado'>('mes');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
   const [isParcelado, setIsParcelado] = useState(false);
   const [selectedOverviewVenda, setSelectedOverviewVenda] = useState<any>(null);
   const [numeroParcelas, setNumeroParcelas] = useState(2);
@@ -184,17 +187,35 @@ export function ContasPagar({ data, updateData }: any) {
     toast('Pagamento atualizado.');
   };
 
-  const aPagar = data.contasPagar.filter((c:any) => !contaAtrasada(c) && ['Em dia', 'Pgto do dia', 'Parcial'].includes(calculateStatusAtrasado(c.vencimento, c.status)) && c.status !== 'Pago');
-  const emAtraso = data.contasPagar.filter((c:any) => contaAtrasada(c));
-  const pagosMes = data.contasPagar.filter((c:any) => c.status === 'Pago'); // Simplified for month
+  // Filtro de período (por vencimento) — atrasados sempre aparecem para não sumirem da vista
+  const noPeriodo = (c: any) => {
+    if (periodo === 'tudo') return true;
+    if (contaAtrasada(c)) return true;
+    if (!c.vencimento) return false;
+    const d = new Date(c.vencimento.length <= 10 ? c.vencimento + 'T12:00:00' : c.vencimento);
+    const ref = new Date();
+    if (periodo === 'mes') return d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear();
+    if (periodo === 'ano') return d.getFullYear() === ref.getFullYear();
+    if (periodo === 'personalizado') {
+      const s = dataInicio ? new Date(dataInicio + 'T00:00:00') : new Date(0);
+      const e = dataFim ? new Date(dataFim + 'T23:59:59') : new Date(8640000000000000);
+      return d >= s && d <= e;
+    }
+    return true;
+  };
+  const contasPeriodo = data.contasPagar.filter(noPeriodo);
 
-  const contasFiltradas = data.contasPagar.filter((c: any) => {
+  const aPagar = contasPeriodo.filter((c:any) => !contaAtrasada(c) && ['Em dia', 'Pgto do dia', 'Parcial'].includes(calculateStatusAtrasado(c.vencimento, c.status)) && c.status !== 'Pago');
+  const emAtraso = contasPeriodo.filter((c:any) => contaAtrasada(c));
+  const pagosMes = contasPeriodo.filter((c:any) => c.status === 'Pago');
+
+  const contasFiltradas = contasPeriodo.filter((c: any) => {
     const calculatedStatus = calculateStatusAtrasado(c.vencimento, c.status);
     const isStatusMatch = view === 'pendentes' ? calculatedStatus !== 'Pago' && calculatedStatus !== 'Cancelado' : calculatedStatus === 'Pago';
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       return isStatusMatch && (
-        c.fornecedor.toLowerCase().includes(search) || 
+        c.fornecedor.toLowerCase().includes(search) ||
         c.categoria.toLowerCase().includes(search)
       );
     }
@@ -218,6 +239,27 @@ export function ContasPagar({ data, updateData }: any) {
 
   return (
     <div className="space-y-6">
+      {/* Filtro de período */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex rounded-xl p-1 gap-1 w-fit" style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border-color)' }}>
+          {([['mes','Mês'],['ano','Ano'],['tudo','Tudo'],['personalizado','Personalizado']] as const).map(([id,label]) => (
+            <button key={id} onClick={() => setPeriodo(id)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+              style={{ background: periodo === id ? '#FF2D74' : 'transparent', color: periodo === id ? '#fff' : 'var(--text-muted)' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {periodo === 'personalizado' && (
+          <div className="flex items-center gap-2">
+            <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="text-xs rounded-lg px-2 py-1.5 border border-border-hover bg-surface-alt text-primary" />
+            <span className="text-placeholder">→</span>
+            <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="text-xs rounded-lg px-2 py-1.5 border border-border-hover bg-surface-alt text-primary" />
+          </div>
+        )}
+        <span className="text-[11px] text-placeholder sm:ml-auto">Atrasados aparecem sempre, independente do período.</span>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-surface p-5 rounded-2xl shadow-md border border-border border-b-4 border-b-[#1F2220]">
           <p className="text-xs font-bold text-placeholder uppercase tracking-widest">Total a Pagar (Pendente)</p>
