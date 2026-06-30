@@ -542,10 +542,11 @@ export function ContasPagar({ data, updateData }: any) {
       </div>
 
       {selectedOverviewVenda && (
-        <VendaOverviewModal 
-           venda={selectedOverviewVenda} 
-           data={data} 
-           onClose={() => setSelectedOverviewVenda(null)} 
+        <VendaOverviewModal
+           venda={selectedOverviewVenda}
+           data={data}
+           updateData={updateData}
+           onClose={() => setSelectedOverviewVenda(null)}
         />
       )}
 

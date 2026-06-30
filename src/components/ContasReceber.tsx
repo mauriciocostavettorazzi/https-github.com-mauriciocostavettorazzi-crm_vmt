@@ -333,9 +333,10 @@ export function ContasReceber({ data, updateData }: any) {
 
       {selectedOverviewVenda && (
         <VendaOverviewModal
-           venda={selectedOverviewVenda} 
-           data={data} 
-           onClose={() => setSelectedOverviewVenda(null)} 
+           venda={selectedOverviewVenda}
+           data={data}
+           updateData={updateData}
+           onClose={() => setSelectedOverviewVenda(null)}
         />
       )}
 

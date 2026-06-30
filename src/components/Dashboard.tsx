@@ -76,7 +76,7 @@ function Segmented({ options, value, onChange }: { options: { label: string; val
 }
 
 // ── Componente principal ─────────────────────────────────────────────────────
-export function Dashboard({ data }: any) {
+export function Dashboard({ data, updateData }: any) {
   const [periodo, setPeriodo] = useState('mes');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
@@ -563,7 +563,7 @@ export function Dashboard({ data }: any) {
       )}
 
       {overviewVenda && (
-        <VendaOverviewModal venda={overviewVenda} data={data} onClose={() => setOverviewVenda(null)} />
+        <VendaOverviewModal venda={overviewVenda} data={data} updateData={updateData} onClose={() => setOverviewVenda(null)} />
       )}
     </div>
   );

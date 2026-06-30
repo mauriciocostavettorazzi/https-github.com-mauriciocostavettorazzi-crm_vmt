@@ -308,7 +308,7 @@ export default function App() {
         {/* Scroll area */}
         <main className="flex-1 overflow-auto">
           <div className="p-6 max-w-[1240px] w-full mx-auto space-y-6">
-            {activeTab === 'dashboard'    && <Dashboard    data={data} />}
+            {activeTab === 'dashboard'    && <Dashboard    data={data} updateData={updateData} />}
             {activeTab === 'vendas'         && <Vendas         data={data} updateData={updateData} setActiveTab={setActiveTab} />}
             {activeTab === 'acompanhamento' && <Acompanhamento data={data} updateData={updateData} />}
             {activeTab === 'receber'      && <ContasReceber data={data} updateData={updateData} />}
