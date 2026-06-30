@@ -183,7 +183,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
     receberVencimento: addDays(new Date(), 30).toISOString().substring(0, 10),
 
     incluirPagar: false,
-    pagarList: [{ id: generateId(), fornecedor: '', valor: '', vencimento: addDays(new Date(), 15).toISOString().substring(0, 10) }],
+    pagarList: [{ id: generateId(), fornecedor: '', valor: '', vencimento: addDays(new Date(), 30).toISOString().substring(0, 10) }],
 
     incluirHospedagem: false,
     hospedagens: [{ id: generateId(), nome: '', plataforma: 'Booking.com', voucher: '', checkIn: '', checkOut: '', quartos: 1, tipoQuarto: 'Standard', regimeAlimentar: 'Café da Manhã', cidade: '', observacoes: '' }],
@@ -306,6 +306,29 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
        });
     }
 
+    // Comissão (margem = valor total − custo) → módulo Comissões, vinculada à venda
+    const prevComissao = (data.comissoes || []).find((c: any) => c.vendaId === vendaId);
+    let updatedComissoes = [...(data.comissoes || [])];
+    if (comissao > 0) {
+      const novaComissao = {
+        ...(prevComissao || {}),
+        id: prevComissao?.id || generateId(),
+        vendaId,
+        fornecedor: novaVenda.fornecedorCusto || formData.cliente,
+        descricao: `Margem — ${formData.cliente}${formData.numeroPedido ? ` (Ped. ${formData.numeroPedido})` : ''}`,
+        valorEsperado: comissao,
+        status: prevComissao?.status || 'Pendente',
+        dataEsperada: prevComissao?.dataEsperada || formData.receberVencimento,
+        criadoEm: prevComissao?.criadoEm || novaVenda.criadoEm,
+      };
+      updatedComissoes = prevComissao
+        ? updatedComissoes.map((c: any) => c.id === prevComissao.id ? novaComissao : c)
+        : [novaComissao, ...updatedComissoes];
+    } else if (prevComissao) {
+      // margem virou 0 → remove a comissão da venda
+      updatedComissoes = updatedComissoes.filter((c: any) => c.id !== prevComissao.id);
+    }
+
     // Save
     let updatedVendas = [...(data.vendas || [])];
     let updatedVoos = [...(data.voos || [])];
@@ -329,6 +352,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
       voos: updatedVoos,
       contasReceber: updatedReceber,
       contasPagar: updatedPagar,
+      comissoes: updatedComissoes,
     });
     
     setIsFormOpen(false);
@@ -370,7 +394,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
        receberVencimento: receber ? receber.vencimento : addDays(new Date(), 30).toISOString().substring(0, 10),
 
        incluirPagar: pagar.length > 0,
-       pagarList: pagar.length > 0 ? pagar.map((p: any) => ({ id: p.id, fornecedor: p.fornecedor, valor: formatMonetaryInput(p.valor), vencimento: p.vencimento })) : [{ id: generateId(), fornecedor: '', valor: '', vencimento: addDays(new Date(), 15).toISOString().substring(0, 10) }],
+       pagarList: pagar.length > 0 ? pagar.map((p: any) => ({ id: p.id, fornecedor: p.fornecedor, valor: formatMonetaryInput(p.valor), vencimento: p.vencimento })) : [{ id: generateId(), fornecedor: '', valor: '', vencimento: addDays(new Date(), 30).toISOString().substring(0, 10) }],
 
        incluirHospedagem: (venda.hospedagens || []).length > 0,
        hospedagens: (venda.hospedagens || []).length > 0 ? venda.hospedagens : [{ id: generateId(), nome: '', plataforma: 'Booking.com', voucher: '', checkIn: '', checkOut: '', quartos: 1, tipoQuarto: 'Standard', regimeAlimentar: 'Café da Manhã', cidade: '', observacoes: '' }],
@@ -743,7 +767,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                        </div>
                      ))}
                      <button type="button" onClick={() => {
-                         setFormData({...formData, pagarList: [...formData.pagarList, { id: generateId(), fornecedor: '', valor: '', vencimento: addDays(new Date(), 15).toISOString().substring(0, 10)}]});
+                         setFormData({...formData, pagarList: [...formData.pagarList, { id: generateId(), fornecedor: '', valor: '', vencimento: addDays(new Date(), 30).toISOString().substring(0, 10)}]});
                      }} className="text-[#1D9E75] text-xs font-bold hover:brightness-110 flex items-center gap-1 uppercase tracking-wider">
                          <PlusCircle size={16}/> Adicionar outro fornecedor
                      </button>

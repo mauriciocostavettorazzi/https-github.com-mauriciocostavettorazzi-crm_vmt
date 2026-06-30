@@ -1,7 +1,30 @@
 import { useState, useEffect } from 'react';
 import { CRMData } from './types';
-import { calculateStatusAtrasado } from './utils';
+import { calculateStatusAtrasado, generateId } from './utils';
 import { supabase } from './lib/supabase';
+
+// Gera comissões (margem) para vendas que ainda não têm uma vinculada
+function migrarComissoesDeVendas(raw: any): any[] {
+  const comissoes = [...(raw.comissoes || [])];
+  const comVendaId = new Set(comissoes.map((c: any) => c.vendaId).filter(Boolean));
+  (raw.vendas || []).forEach((v: any) => {
+    if (v.status === 'Cancelado') return;
+    const margem = Number(v.comissao) || 0;
+    if (margem > 0 && !comVendaId.has(v.id)) {
+      comissoes.push({
+        id: generateId(),
+        vendaId: v.id,
+        fornecedor: v.fornecedorCusto || v.cliente,
+        descricao: `Margem — ${v.cliente}${v.numeroPedido ? ` (Ped. ${v.numeroPedido})` : ''}`,
+        valorEsperado: margem,
+        status: 'Pendente',
+        dataEsperada: '',
+        criadoEm: v.criadoEm || new Date().toISOString(),
+      });
+    }
+  });
+  return comissoes;
+}
 
 const INITIAL_DATA: CRMData = {
   pessoas: [],
@@ -87,7 +110,7 @@ function parseData(raw: any): CRMData {
     pessoas: migrateToFessoas(raw),
     leads: raw.leads || [],
     cotacoes: raw.cotacoes || [],
-    comissoes: raw.comissoes || [],
+    comissoes: migrarComissoesDeVendas(raw),
     mensagensWpp: raw.mensagensWpp || [],
     templatesWpp: raw.templatesWpp || [],
     contasReceber: (raw.contasReceber || []).map((c: any) => ({
