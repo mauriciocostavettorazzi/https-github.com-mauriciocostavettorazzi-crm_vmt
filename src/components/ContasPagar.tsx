@@ -14,6 +14,9 @@ export function ContasPagar({ data, updateData }: any) {
   const [numeroParcelas, setNumeroParcelas] = useState(2);
   const [valoresIguais, setValoresIguais] = useState(true);
   const [parcelas, setParcelas] = useState<{valor: string, vencimento: string}[]>([]);
+  // Conta recorrente (mesmo valor por N meses)
+  const [isRecorrente, setIsRecorrente] = useState(false);
+  const [numeroMeses, setNumeroMeses] = useState(6);
 
   const [formData, setFormData] = useState({
     fornecedor: '',
@@ -78,8 +81,29 @@ export function ContasPagar({ data, updateData }: any) {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (isParcelado) {
+    const criadoEm = new Date().toISOString();
+
+    if (isRecorrente) {
+       // Mesmo valor repetido por N meses (ex: contador, coworking)
+       const valor = parseMonetaryValue(formData.valor);
+       const base = new Date(formData.vencimento + 'T00:00:00');
+       const novasContas = Array.from({ length: numeroMeses }, (_, i) => {
+         const d = new Date(base);
+         d.setMonth(d.getMonth() + i);
+         return {
+           id: generateId(),
+           fornecedor: formData.fornecedor,
+           categoria: formData.categoria,
+           valor,
+           vencimento: d.toISOString().substring(0, 10),
+           status: 'Pendente',
+           criadoEm,
+           observacao: `Recorrente ${i + 1}/${numeroMeses}`,
+           recorrente: true,
+         };
+       });
+       updateData({ contasPagar: [...novasContas, ...data.contasPagar] });
+    } else if (isParcelado) {
        const novasContas = parcelas.map((p, index) => ({
          fornecedor: formData.fornecedor,
          categoria: formData.categoria,
@@ -87,6 +111,7 @@ export function ContasPagar({ data, updateData }: any) {
          vencimento: p.vencimento,
          status: 'Pendente',
          id: generateId(),
+         criadoEm,
          observacao: `Parcela ${index + 1}/${numeroParcelas}`
        }));
        updateData({ contasPagar: [...novasContas, ...data.contasPagar] });
@@ -95,10 +120,13 @@ export function ContasPagar({ data, updateData }: any) {
          ...formData,
          id: generateId(),
          valor: parseMonetaryValue(formData.valor),
+         criadoEm,
        };
        updateData({ contasPagar: [novaConta, ...data.contasPagar] });
     }
-    
+
+    setIsRecorrente(false);
+    setIsParcelado(false);
     setIsFormOpen(false);
   };
 
@@ -268,27 +296,51 @@ export function ContasPagar({ data, updateData }: any) {
                 value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})}>
                 <option>Passagem</option><option>Hotel</option><option>GDS/SABRE</option>
                 <option>IATA</option><option>Aluguel</option><option>Folha</option>
+                <option>Consumo</option><option>Contador</option><option>Coworking</option>
                 <option>Imposto</option><option>Outros</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor {isParcelado ? 'Total ' : ''}(R$)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Valor {isParcelado ? 'Total ' : isRecorrente ? 'Mensal ' : ''}(R$)</label>
               <input required type="text" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.valor} onChange={e => setFormData({...formData, valor: e.target.value})} onBlur={e => setFormData({...formData, valor: formatMonetaryInput(e.target.value)})} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{isParcelado ? 'Vencimento 1ª Parcela' : 'Vencimento'}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{isParcelado ? 'Vencimento 1ª Parcela' : isRecorrente ? 'Vencimento 1º Mês' : 'Vencimento'}</label>
               <input required type="date" className="w-full border border-border-hover rounded-md p-2" 
                 value={formData.vencimento} onChange={e => setFormData({...formData, vencimento: e.target.value})} />
             </div>
             
-            <div className="lg:col-span-4 mt-2">
+            <div className="lg:col-span-4 mt-2 flex flex-col sm:flex-row gap-x-8 gap-y-2">
               <label className="flex items-center space-x-2 text-sm font-medium text-primary cursor-pointer w-max">
-                <input type="checkbox" className="rounded border-border-hover text-white focus:ring-[#1F2220]" 
-                  checked={isParcelado} onChange={(e) => setIsParcelado(e.target.checked)} />
+                <input type="checkbox" className="rounded border-border-hover text-white focus:ring-[#1F2220]"
+                  checked={isParcelado} onChange={(e) => { setIsParcelado(e.target.checked); if (e.target.checked) setIsRecorrente(false); }} />
                 <span>Esta conta será parcelada</span>
               </label>
+              <label className="flex items-center space-x-2 text-sm font-medium text-primary cursor-pointer w-max">
+                <input type="checkbox" className="rounded border-border-hover text-white focus:ring-[#1F2220]"
+                  checked={isRecorrente} onChange={(e) => { setIsRecorrente(e.target.checked); if (e.target.checked) setIsParcelado(false); }} />
+                <span>🔁 Conta recorrente (mensal)</span>
+              </label>
             </div>
+
+            {isRecorrente && (
+              <div className="lg:col-span-4 bg-surface-alt p-4 rounded-lg border border-border mt-2">
+                <div className="flex flex-col md:flex-row gap-4 items-end">
+                  <div className="w-full md:w-1/3">
+                    <label className="block text-sm font-medium text-muted mb-1">Repetir por quantos meses?</label>
+                    <input type="number" min="1" max="36" className="w-full border border-border-hover rounded-md p-2"
+                      value={numeroMeses} onChange={e => setNumeroMeses(parseInt(e.target.value) || 1)} />
+                  </div>
+                  <div className="flex-1 pb-1 text-sm text-muted">
+                    Serão lançadas <strong className="text-primary">{numeroMeses}</strong> contas de{' '}
+                    <strong className="text-primary">{formData.valor ? `R$ ${formData.valor}` : 'R$ —'}</strong>,
+                    uma a cada mês a partir de <strong className="text-primary">{formData.vencimento ? new Date(formData.vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</strong>.
+                    <span className="block text-[11px] mt-1 text-placeholder">Ideal para contador, coworking e outras despesas fixas mensais.</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {isParcelado && (
               <div className="lg:col-span-4 bg-surface-alt p-4 rounded-lg border border-border mt-2 space-y-4">

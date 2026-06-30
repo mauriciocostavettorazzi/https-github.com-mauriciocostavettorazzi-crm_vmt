@@ -271,7 +271,7 @@ export type ContaReceber = {
 export type ContaPagar = {
   id: string;
   fornecedor: string;
-  categoria: 'Passagem' | 'Hotel' | 'GDS/SABRE' | 'IATA' | 'Aluguel' | 'Folha' | 'Imposto' | 'Outros';
+  categoria: 'Passagem' | 'Hotel' | 'GDS/SABRE' | 'IATA' | 'Aluguel' | 'Folha' | 'Consumo' | 'Contador' | 'Coworking' | 'Imposto' | 'Outros';
   valor: number;
   vencimento: string;
   status: 'Pendente' | 'Pago' | 'Atrasado';
