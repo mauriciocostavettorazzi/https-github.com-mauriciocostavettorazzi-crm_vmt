@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { formatCurrency, isCheckinLiberado, getCheckinUrl, calculateStatusAtrasado } from '../utils';
 import { saldoRestante, isAtrasado as contaAtrasada, diasEmAtraso } from '../lib/financeiro';
-import { Plane, TrendingUp, DollarSign, AlertTriangle, Gift, FileWarning, CheckSquare, Users, FileText, ArrowDownCircle, ArrowUpCircle, Wallet, ExternalLink } from 'lucide-react';
+import { Plane, TrendingUp, DollarSign, AlertTriangle, Gift, FileWarning, CheckSquare, Users, FileText, ArrowDownCircle, ArrowUpCircle, Wallet, ExternalLink, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import { isWithinInterval, addDays, subDays } from 'date-fns';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
+import { VendaOverviewModal } from './VendaOverviewModal';
 
 // ── cores de marca ──────────────────────────────────────────────────────────
 const C = {
@@ -79,6 +80,8 @@ export function Dashboard({ data }: any) {
   const [periodo, setPeriodo] = useState('mes');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+  const [alertasAbertos, setAlertasAbertos] = useState(true);
+  const [overviewVenda, setOverviewVenda] = useState<any>(null);
 
   const filterByDate = (dateStr: string) => {
     if (!dateStr) return false;
@@ -100,17 +103,18 @@ export function Dashboard({ data }: any) {
   const valorVendas  = vendasFiltradas.reduce((a: number, v: any) => a + (v.valorBruto || 0), 0);
   const lucroBruto   = vendasFiltradas.reduce((a: number, v: any) => a + (Number(v.comissao) || 0), 0);
 
+  // A Receber / A Pagar são posições em aberto (saldo real), independem do período de vencimento
   const receberPendente = data.contasReceber.filter((c: any) => {
     if (c.status === 'Recebido' || c.status === 'Cancelado') return false;
     const s = calculateStatusAtrasado(c.vencimento, c.status);
-    return (['Em dia', 'Pgto do dia', 'Atrasado', 'Parcial'].includes(s) || contaAtrasada(c)) && filterByDate(c.vencimento);
+    return ['Em dia', 'Pgto do dia', 'Atrasado', 'Parcial'].includes(s) || contaAtrasada(c);
   });
   const valorReceber = receberPendente.reduce((a: number, c: any) => a + saldoRestante(c), 0);
 
   const pagarPendente = data.contasPagar.filter((c: any) => {
     if (c.status === 'Pago' || c.status === 'Cancelado') return false;
     const s = calculateStatusAtrasado(c.vencimento, c.status);
-    return (['Em dia', 'Pgto do dia', 'Atrasado', 'Parcial'].includes(s) || contaAtrasada(c)) && filterByDate(c.vencimento);
+    return ['Em dia', 'Pgto do dia', 'Atrasado', 'Parcial'].includes(s) || contaAtrasada(c);
   });
   const valorPagar = pagarPendente.reduce((a: number, c: any) => a + saldoRestante(c), 0);
 
@@ -131,7 +135,7 @@ export function Dashboard({ data }: any) {
 
   // Alertas
   const alertas = useMemo(() => {
-    const items: { tipo: 'error' | 'warn' | 'info'; label: string; sub: string }[] = [];
+    const items: { tipo: 'error' | 'warn' | 'info'; label: string; sub: string; venda?: any; conta?: any; pessoa?: any }[] = [];
     const hoje = new Date();
     (data.pessoas || []).forEach((p: any) => {
       if (p.passaporteValidade) {
@@ -159,20 +163,39 @@ export function Dashboard({ data }: any) {
       (v.tarefas || []).filter((t: any) => !t.feita && t.prazo && new Date(t.prazo) < hoje).forEach(() => tarefasVencidas++);
     });
     if (tarefasVencidas > 0) items.push({ tipo: 'error', label: `${tarefasVencidas} tarefa(s) vencida(s)`, sub: 'Verifique o checklist nas vendas.' });
-    const atrasadosP = (data.contasPagar  || []).filter((c: any) => contaAtrasada(c)).length;
-    if (atrasadosP > 0) items.push({ tipo: 'error', label: `${atrasadosP} conta(s) a pagar em atraso`, sub: 'Verifique A Pagar.' });
+    // A Receber em atraso — um alerta por título, clicável
     (data.contasReceber || [])
       .filter((c: any) => contaAtrasada(c))
       .forEach((c: any) => {
         const dias = diasEmAtraso(c);
+        const venda = c.vendaId ? (data.vendas || []).find((v: any) => v.id === c.vendaId) : null;
         items.push({
           tipo: 'error',
           label: `A Receber em atraso — ${c.cliente}`,
           sub: `${dias} dia${dias !== 1 ? 's' : ''} em atraso · Saldo: ${formatCurrency(saldoRestante(c))}`,
+          venda, conta: c,
+        });
+      });
+    // A Pagar em atraso — um alerta por título, clicável
+    (data.contasPagar || [])
+      .filter((c: any) => contaAtrasada(c))
+      .forEach((c: any) => {
+        const dias = diasEmAtraso(c);
+        const venda = c.vendaId ? (data.vendas || []).find((v: any) => v.id === c.vendaId) : null;
+        items.push({
+          tipo: 'error',
+          label: `A Pagar em atraso — ${c.fornecedor}`,
+          sub: `${dias} dia${dias !== 1 ? 's' : ''} em atraso · Saldo: ${formatCurrency(saldoRestante(c))}`,
+          venda, conta: c,
         });
       });
     return items;
   }, [data]);
+
+  // Ao clicar num alerta: abre o overview da venda (se houver vínculo)
+  const abrirAlerta = (a: any) => {
+    if (a.venda) setOverviewVenda(a.venda);
+  };
 
   // Top destinos — usa venda.destinos[] como fonte primária
   const topDestinos = useMemo(() => {
@@ -255,27 +278,46 @@ export function Dashboard({ data }: any) {
         </div>
       </div>
 
-      {/* ── Alertas ── */}
+      {/* ── Alertas (painel colapsável) ── */}
       {alertas.length > 0 && (
         <div className="rounded-[18px] overflow-hidden" style={{ border: '1px solid rgba(255,90,110,.25)', background: 'rgba(255,90,110,.06)' }}>
-          <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: '1px solid rgba(255,90,110,.2)' }}>
-            <AlertTriangle size={15} style={{ color: C.red }} />
-            <span className="text-xs font-bold" style={{ color: C.red }}>Alertas ({alertas.length})</span>
-          </div>
-          <div className="divide-y" style={{ '--tw-divide-opacity': 1 } as any}>
-            {alertas.map((a, i) => {
-              const dot = a.tipo === 'error' ? C.red : a.tipo === 'warn' ? C.amber : C.cyan;
-              return (
-                <div key={i} className="flex items-start gap-3 px-5 py-3">
-                  <span className="w-2 h-2 rounded-full mt-1 shrink-0" style={{ background: dot }} />
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{a.label}</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{a.sub}</p>
+          <button
+            onClick={() => setAlertasAbertos(o => !o)}
+            className="w-full flex items-center justify-between px-5 py-3"
+            style={{ borderBottom: alertasAbertos ? '1px solid rgba(255,90,110,.2)' : 'none' }}
+          >
+            <span className="flex items-center gap-2">
+              <AlertTriangle size={15} style={{ color: C.red }} />
+              <span className="text-xs font-bold" style={{ color: C.red }}>Alertas ({alertas.length})</span>
+            </span>
+            {alertasAbertos ? <ChevronUp size={16} style={{ color: C.red }} /> : <ChevronDown size={16} style={{ color: C.red }} />}
+          </button>
+          {alertasAbertos && (
+            <div className="divide-y" style={{ '--tw-divide-opacity': 1 } as any}>
+              {alertas.map((a, i) => {
+                const dot = a.tipo === 'error' ? C.red : a.tipo === 'warn' ? C.amber : C.cyan;
+                const clicavel = !!a.venda;
+                return (
+                  <div
+                    key={i}
+                    onClick={() => clicavel && abrirAlerta(a)}
+                    className={`flex items-center gap-3 px-5 py-3 ${clicavel ? 'cursor-pointer hover:bg-[rgba(255,90,110,.08)] transition-colors' : ''}`}
+                  >
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{a.label}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{a.sub}</p>
+                    </div>
+                    {clicavel && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: C.red }}>
+                        Ver venda <ChevronRight size={13} />
+                      </span>
+                    )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -452,13 +494,16 @@ export function Dashboard({ data }: any) {
               <div className="max-h-52 overflow-y-auto divide-y" style={{ borderColor: 'var(--border-color)' }}>
                 {alertas.slice(0, 8).map((a, i) => {
                   const dot = a.tipo === 'error' ? C.red : a.tipo === 'warn' ? C.amber : C.cyan;
+                  const clicavel = !!a.venda;
                   return (
-                    <div key={i} className="flex items-start gap-3 px-4 py-3">
+                    <div key={i} onClick={() => clicavel && abrirAlerta(a)}
+                      className={`flex items-start gap-3 px-4 py-3 ${clicavel ? 'cursor-pointer hover:bg-surface-alt transition-colors' : ''}`}>
                       <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: dot }} />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{a.label}</p>
                         <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{a.sub}</p>
                       </div>
+                      {clicavel && <ChevronRight size={13} className="shrink-0 mt-0.5" style={{ color: 'var(--text-faint)' }} />}
                     </div>
                   );
                 })}
@@ -515,6 +560,10 @@ export function Dashboard({ data }: any) {
             })}
           </div>
         </div>
+      )}
+
+      {overviewVenda && (
+        <VendaOverviewModal venda={overviewVenda} data={data} onClose={() => setOverviewVenda(null)} />
       )}
     </div>
   );
