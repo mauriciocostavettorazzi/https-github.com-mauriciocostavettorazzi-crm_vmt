@@ -2,7 +2,7 @@ import React from 'react';
 import { Venda } from '../types';
 import { X, Plane, DollarSign, Calendar, MapPin, User, Hash, Users, Percent, CheckCircle } from 'lucide-react';
 import { formatCurrency, isCheckinLiberado, getCheckinUrl, maskPhone } from '../utils';
-import { saldoRestante, pagamentosDe, registrarPagamento } from '../lib/financeiro';
+import { saldoRestante, registrarPagamento } from '../lib/financeiro';
 import { toast } from '../toast';
 
 interface VendaOverviewModalProps {
@@ -19,7 +19,6 @@ export function VendaOverviewModal({ venda, data, onClose, updateData }: VendaOv
   const contasReceber = data.contasReceber.filter((c: any) => c.vendaId === venda.id);
   const comissaoVenda = (data.comissoes || []).find((c: any) => c.vendaId === venda.id);
   const hoje = new Date().toISOString().substring(0, 10);
-  const recebidoComissao = (c: any) => pagamentosDe(c).reduce((s: number, p: any) => s + (p.valor || 0), 0);
 
   // ── Baixas unificadas (atalho a partir do overview) ──
   const baixarReceber = (conta: any) => {
@@ -37,13 +36,6 @@ export function VendaOverviewModal({ venda, data, onClose, updateData }: VendaOv
       ? data.vendas.map((v: any) => v.id === conta.vendaId ? { ...v, statusP: true } : v) : data.vendas;
     updateData({ contasPagar: data.contasPagar.map((c: any) => c.id === conta.id ? atualizada : c), vendas });
     toast('Pagamento ao fornecedor registrado!');
-  };
-  const receberComissao = (com: any) => {
-    if (!updateData) return;
-    const saldo = Math.max(0, (com.valorEsperado || 0) - recebidoComissao(com));
-    const pagamentos = [...pagamentosDe(com), { data: hoje, valor: saldo }];
-    updateData({ comissoes: data.comissoes.map((c: any) => c.id === com.id ? { ...c, pagamentos, valorRecebido: undefined, status: 'Recebida', dataRecebida: hoje } : c) });
-    toast('Comissão recebida!');
   };
 
   return (
@@ -230,31 +222,20 @@ export function VendaOverviewModal({ venda, data, onClose, updateData }: VendaOv
               </div>
            </div>
 
-           {/* Section: Comissão (margem da venda) */}
+           {/* Section: Comissão (margem da venda) — informativo */}
            {comissaoVenda && (
              <div className="md:col-span-2">
                 <h4 className="text-[10px] font-black uppercase text-placeholder tracking-widest flex items-center gap-1 mb-3"><Percent size={14}/> Comissão / Margem da Venda</h4>
                 <div className="bg-surface rounded-lg border border-border shadow-sm p-4 flex flex-wrap items-center justify-between gap-3">
                    <div className="flex flex-col">
-                      <span className="text-[10px] text-muted uppercase">Margem esperada</span>
+                      <span className="text-[10px] text-muted uppercase">Margem da venda (lucro)</span>
                       <span className="font-black text-emerald-400 text-lg">{formatCurrency(comissaoVenda.valorEsperado || 0)}</span>
-                      {recebidoComissao(comissaoVenda) > 0 && (
-                        <span className="text-[10px] text-muted mt-0.5">Recebido: {formatCurrency(recebidoComissao(comissaoVenda))} · Saldo: {formatCurrency(Math.max(0, (comissaoVenda.valorEsperado||0) - recebidoComissao(comissaoVenda)))}</span>
-                      )}
                    </div>
-                   <div className="flex items-center gap-3">
-                      <span className={`px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider leading-none
-                          ${comissaoVenda.status === 'Recebida' ? 'bg-emerald-900/40 text-emerald-400' :
-                            comissaoVenda.status === 'Parcial' ? 'bg-blue-900/40 text-blue-400' : 'bg-amber-900/30 text-amber-400'}`}>
-                          {comissaoVenda.status}
-                      </span>
-                      {updateData && comissaoVenda.status !== 'Recebida' && comissaoVenda.status !== 'Cancelada' && (
-                        <button onClick={() => receberComissao(comissaoVenda)} title="Marcar comissão como recebida"
-                            className="flex items-center gap-1 bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded">
-                            <CheckCircle size={13} /> Receber comissão
-                        </button>
-                      )}
-                   </div>
+                   {venda.valorBruto > 0 && (
+                     <span className="text-[11px] font-bold text-amber-400 bg-amber-900/20 px-2 py-1 rounded">
+                       {((comissaoVenda.valorEsperado || 0) / venda.valorBruto * 100).toFixed(1)}% sobre a venda
+                     </span>
+                   )}
                 </div>
              </div>
            )}
