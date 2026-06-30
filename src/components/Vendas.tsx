@@ -173,7 +173,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
     modoLucro: 'Comissao',
     custo: '',
     fornecedorCusto: '',
-    fornecedoresCustoList: [{ id: generateId(), fornecedor: '', valor: '' }],
+    fornecedoresCustoList: [{ id: generateId(), fornecedor: '', valor: '', vencimento: new Date().toISOString().substring(0, 10) }],
 
     incluirVoo: false,
     tipoViagem: 'Ida', // Ida, Ida e Volta, Multi-destinos
@@ -289,21 +289,47 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
 
     // A Pagar
     const prevPagarList = editingId ? data.contasPagar.filter((cp:any) => cp.vendaId === vendaId) : [];
+    const categoriaPadrao = formData.tipo === 'Passagem Aérea' ? 'Passagem' : (formData.tipo === 'Hotel' ? 'Hospedagem' : 'Serviços');
     let novosAPagar: any[] = [];
+
+    // Modo Custo: cada fornecedor de custo vira uma conta a pagar (com seu vencimento)
+    if (formData.modoLucro === 'Custo') {
+      novosAPagar = formData.fornecedoresCustoList
+        .filter((fc: any) => parseMonetaryValue(fc.valor) > 0 && fc.fornecedor)
+        .map((fc: any) => {
+          const contaId = `custo-${fc.id}`;
+          const prev = prevPagarList.find((op: any) => op.id === contaId || op.id === fc.id);
+          return {
+            id: prev?.id || contaId,
+            vendaId,
+            fornecedor: fc.fornecedor,
+            categoria: categoriaPadrao,
+            valor: parseMonetaryValue(fc.valor),
+            vencimento: fc.vencimento || formData.dataVenda || new Date().toISOString().substring(0, 10),
+            status: prev?.status || 'Pendente',
+            pagamentos: prev?.pagamentos,   // preserva baixas ao editar
+            criadoEm: prev?.criadoEm || novaVenda.criadoEm || new Date().toISOString(),
+          };
+        });
+    }
+
+    // Seção "A Pagar" avulsa (custos adicionais) — somada à dos custos
     if (formData.incluirPagar) {
-       novosAPagar = formData.pagarList.filter((p: any) => parseMonetaryValue(p.valor) && p.fornecedor).map((p: any) => {
+       const avulsas = formData.pagarList.filter((p: any) => parseMonetaryValue(p.valor) && p.fornecedor).map((p: any) => {
          const prev = prevPagarList.find((op: any) => op.id === p.id);
          return {
            id: prev ? prev.id : (p.id || generateId()),
            vendaId,
            fornecedor: p.fornecedor,
-           categoria: formData.tipo === 'Passagem Aérea' ? 'Passagem' : (formData.tipo === 'Hotel' ? 'Hospedagem' : 'Serviços'),
+           categoria: categoriaPadrao,
            valor: parseMonetaryValue(p.valor),
            vencimento: p.vencimento,
            status: prev ? prev.status : 'Pendente',
+           pagamentos: prev?.pagamentos,
            criadoEm: prev?.criadoEm || novaVenda.criadoEm || new Date().toISOString(),
          };
        });
+       novosAPagar = [...novosAPagar, ...avulsas];
     }
 
     // Comissão (margem = valor total − custo) → módulo Comissões, vinculada à venda
@@ -384,7 +410,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
        modoLucro: venda.modoLucro || 'Comissao',
        custo: venda.custo ? formatMonetaryInput(venda.custo) : '',
        fornecedorCusto: venda.fornecedorCusto || '',
-       fornecedoresCustoList: venda.fornecedoresCustoList && venda.fornecedoresCustoList.length > 0 ? venda.fornecedoresCustoList.map((fc: any) => ({...fc, valor: formatMonetaryInput(fc.valor)})) : [{ id: generateId(), fornecedor: '', valor: '' }],
+       fornecedoresCustoList: venda.fornecedoresCustoList && venda.fornecedoresCustoList.length > 0 ? venda.fornecedoresCustoList.map((fc: any) => ({...fc, valor: formatMonetaryInput(fc.valor), vencimento: fc.vencimento || (venda.criadoEm ? venda.criadoEm.substring(0,10) : new Date().toISOString().substring(0,10))})) : [{ id: generateId(), fornecedor: '', valor: '', vencimento: new Date().toISOString().substring(0, 10) }],
 
        incluirVoo: voos.length > 0,
        tipoViagem: voos.length > 1 ? (voos.length === 2 ? 'Ida e Volta' : 'Multi-destinos') : 'Ida',
@@ -623,7 +649,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                ) : (
                   <div className="md:col-span-4 lg:col-span-2 space-y-3">
                      {formData.fornecedoresCustoList.map((fc: any, idx: number) => (
-                        <div key={fc.id} className="grid grid-cols-2 gap-3 relative pb-2 border-b border-gray-100 last:border-0">
+                        <div key={fc.id} className="grid grid-cols-2 md:grid-cols-3 gap-3 relative pb-2 border-b border-gray-100 last:border-0">
                            {formData.fornecedoresCustoList.length > 1 && (
                              <button type="button" onClick={() => {
                                  const list = [...formData.fornecedoresCustoList];
@@ -635,7 +661,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                            )}
                            <div>
                              <label className="block text-sm font-medium text-muted mb-1">Fornecedor {idx + 1}</label>
-                             <select required className="w-full border border-border-hover rounded-md p-2" 
+                             <select required className="w-full border border-border-hover rounded-md p-2"
                                value={fc.fornecedor} onChange={e => {
                                  const list = [...formData.fornecedoresCustoList];
                                  list[idx].fornecedor = e.target.value;
@@ -649,7 +675,7 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                            </div>
                            <div>
                              <label className="block text-sm font-medium text-muted mb-1">Custo (R$)</label>
-                             <input required type="text" className="w-full border border-border-hover rounded-md p-2 pl-2" 
+                             <input required type="text" className="w-full border border-border-hover rounded-md p-2 pl-2"
                                value={fc.valor} onChange={e => {
                                  const list = [...formData.fornecedoresCustoList];
                                  list[idx].valor = e.target.value;
@@ -660,11 +686,20 @@ export function Vendas({ data, updateData, setActiveTab }: any) {
                                  setFormData({...formData, fornecedoresCustoList: list});
                                }} />
                            </div>
+                           <div className="col-span-2 md:col-span-1">
+                             <label className="block text-sm font-medium text-muted mb-1">Vencimento (A Pagar)</label>
+                             <input type="date" className="w-full border border-border-hover rounded-md p-2"
+                               value={fc.vencimento || ''} onChange={e => {
+                                 const list = [...formData.fornecedoresCustoList];
+                                 list[idx].vencimento = e.target.value;
+                                 setFormData({...formData, fornecedoresCustoList: list});
+                               }} />
+                           </div>
                         </div>
                      ))}
                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
                          <button type="button" onClick={() => {
-                             setFormData({...formData, fornecedoresCustoList: [...formData.fornecedoresCustoList, { id: generateId(), fornecedor: '', valor: ''}]});
+                             setFormData({...formData, fornecedoresCustoList: [...formData.fornecedoresCustoList, { id: generateId(), fornecedor: '', valor: '', vencimento: formData.dataVenda || new Date().toISOString().substring(0,10)}]});
                          }} className="text-[#1D9E75] text-xs font-bold hover:brightness-110 flex items-center gap-1 uppercase tracking-wider">
                              <PlusCircle size={16}/> Adicionar custo
                          </button>

@@ -95,11 +95,37 @@ function migrateToFessoas(raw: any): any[] {
   return [...fromClientes, ...fromFornecedores];
 }
 
+// Gera contas a pagar para vendas com custo de fornecedor (fornecedoresCustoList) que ainda não têm
+function migrarCustosParaPagar(raw: any): any[] {
+  const contasPagar = [...(raw.contasPagar || [])];
+  const vendasComPagar = new Set(contasPagar.map((c: any) => c.vendaId).filter(Boolean));
+  (raw.vendas || []).forEach((v: any) => {
+    if (v.status === 'Cancelado' || vendasComPagar.has(v.id)) return;
+    (v.fornecedoresCustoList || []).forEach((fc: any) => {
+      const valor = typeof fc.valor === 'number' ? fc.valor : Number(String(fc.valor).replace(/\./g, '').replace(',', '.')) || 0;
+      if (valor > 0 && fc.fornecedor) {
+        contasPagar.push({
+          id: `custo-${fc.id || Math.random().toString(36).slice(2, 9)}`,
+          vendaId: v.id,
+          fornecedor: fc.fornecedor,
+          categoria: v.tipo === 'Passagem Aérea' ? 'Passagem' : (v.tipo === 'Hotel' ? 'Hospedagem' : 'Serviços'),
+          valor,
+          vencimento: fc.vencimento || (v.criadoEm || new Date().toISOString()).substring(0, 10),
+          status: 'Pendente',
+          criadoEm: v.criadoEm || new Date().toISOString(),
+        });
+      }
+    });
+  });
+  return contasPagar;
+}
+
 function parseData(raw: any): CRMData {
   if (!raw) return INITIAL_DATA;
   // Mapa vendaId → data de criação da venda (para herdar criadoEm em contas antigas)
   const vendaCriadoEm: Record<string, string> = {};
   (raw.vendas || []).forEach((v: any) => { if (v?.id) vendaCriadoEm[v.id] = v.criadoEm; });
+  const contasPagarBase = migrarCustosParaPagar(raw);
   // Contas antigas sem criadoEm herdam a data da venda (ou o vencimento como fallback)
   const garantirCriadoEm = (c: any) => c.criadoEm
     ? c
@@ -117,7 +143,7 @@ function parseData(raw: any): CRMData {
       ...garantirCriadoEm(c),
       status: calculateStatusAtrasado(c.vencimento, c.status) as any
     })),
-    contasPagar: (raw.contasPagar || []).map((c: any) => ({
+    contasPagar: contasPagarBase.map((c: any) => ({
       ...garantirCriadoEm(c),
       status: calculateStatusAtrasado(c.vencimento, c.status) as any
     }))
