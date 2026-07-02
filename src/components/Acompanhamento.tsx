@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { generateId, isCheckinLiberado, getCheckinUrl, generateCalendarLink, formatCurrency } from '../utils';
-import { subDays, addDays } from 'date-fns';
 import {
   Plane, BedDouble, Ship, Shield, Car, Package2,
   PlusCircle, Search, Calendar, ExternalLink, Edit, Trash2,
@@ -51,8 +50,9 @@ function IataChip({ code }: { code: string }) {
 
 // ── Countdown badge ───────────────────────────────────────────────────────────
 function Countdown({ dateStr }: { dateStr: string }) {
-  const diff = Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
-  if (diff < 0) return <span className="text-[10px]" style={{ color: C.red }}>Passado</span>;
+  const diffMs = new Date(dateStr).getTime() - Date.now();
+  if (diffMs < 0) return <span className="text-[10px]" style={{ color: C.red }}>Passado</span>;
+  const diff = Math.floor(diffMs / 86400000);
   if (diff === 0) return <span className="text-[10px] font-bold" style={{ color: C.magenta }}>Hoje!</span>;
   if (diff <= 2) return <span className="text-[10px] font-bold" style={{ color: C.red }}>{diff}d</span>;
   if (diff <= 7) return <span className="text-[10px] font-bold" style={{ color: C.amber }}>{diff}d</span>;
@@ -173,7 +173,7 @@ export function Acompanhamento({ data, updateData }: any) {
 
   const proximosVoos = useMemo(() =>
     todosVoos
-      .filter((v: any) => v.status !== 'Cancelado' && v.status !== 'Voado' && new Date(v.dataPartida) > subDays(now, 1))
+      .filter((v: any) => v.status !== 'Cancelado' && v.status !== 'Voado' && new Date(v.dataPartida) >= now)
       .sort((a: any, b: any) => new Date(a.dataPartida).getTime() - new Date(b.dataPartida).getTime()),
     [todosVoos]);
 
